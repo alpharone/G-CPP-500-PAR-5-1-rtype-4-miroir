@@ -1,6 +1,5 @@
 # R-Type
 
----
 
 ## Project carried out by :
 

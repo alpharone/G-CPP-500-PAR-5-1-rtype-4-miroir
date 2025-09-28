@@ -4,7 +4,7 @@ add_library(server_lib
 
 target_include_directories(server_lib PUBLIC include)
 target_link_libraries(server_lib
-    PRIVATE
+    PUBLIC
         engine
         network
         game

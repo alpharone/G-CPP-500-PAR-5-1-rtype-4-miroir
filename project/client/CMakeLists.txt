@@ -4,15 +4,20 @@ add_library(client_lib
 
 target_include_directories(client_lib PUBLIC include)
 target_link_libraries(client_lib
-    PRIVATE
+    PUBLIC
         engine
         network
         game
         tools
+        components
 )
 
 add_executable(r-type_client
     src/main.cpp
+    src/Client.cpp
+    src/ClientApp.cpp
+    src/RenderLoop.cpp
+    src/ResourceManager.cpp
 )
 
 set_target_properties(r-type_client PROPERTIES

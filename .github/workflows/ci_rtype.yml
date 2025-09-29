@@ -1,0 +1,34 @@
+name: CI R-TYPE
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest, fedora-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install Docker
+        run: |
+          if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+            sudo apt-get update
+            sudo apt-get install -y docker.io
+          elif [[ "${{ matrix.os }}" == "macos-latest" ]]; then
+            brew install --cask docker
+            open /Applications/Docker.app || true
+            sleep 20
+          elif [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            choco install docker-desktop
+          elif [[ "${{ matrix.os }}" == "fedora-latest" ]]; then
+            sudo dnf install -y docker
+            sudo systemctl start docker
+            sudo systemctl enable docker
+          fi
+
+      # - name: Build Docker
+      #   run: |
+

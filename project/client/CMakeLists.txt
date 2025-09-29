@@ -10,6 +10,7 @@ target_link_libraries(client_lib
         game
         tools
         components
+        systems
 )
 
 add_executable(r-type_client

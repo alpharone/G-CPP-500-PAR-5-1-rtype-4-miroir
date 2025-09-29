@@ -1,11 +1,19 @@
 /*
 ** EPITECH PROJECT, 2025
-** repo
+** Client
 ** File description:
-** main
+** main.cpp
 */
+
+#include "ClientApp.hpp"
 
 int main()
 {
+    ClientApp app;
+
+    if (!app.init())
+        return -1;
+    app.mainLoop();
+    app.shutdown();
     return 0;
 }

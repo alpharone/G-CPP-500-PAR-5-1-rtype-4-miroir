@@ -14,6 +14,10 @@ target_link_libraries(client_lib
 
 add_executable(r-type_client
     src/main.cpp
+    src/Client.cpp
+    src/ClientApp.cpp
+    src/RenderLoop.cpp
+    src/ResourceManager.cpp
 )
 
 set_target_properties(r-type_client PROPERTIES

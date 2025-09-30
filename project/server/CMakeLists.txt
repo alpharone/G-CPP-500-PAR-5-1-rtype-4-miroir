@@ -1,8 +1,9 @@
 add_library(server_lib
     src/Server.cpp
+    src/ReliableChannel.cpp
 )
 
-target_include_directories(server_lib PUBLIC include)
+target_include_directories(server_lib PUBLIC include ${asio_SOURCE_DIR}/asio/include)
 target_link_libraries(server_lib
     PUBLIC
         engine
@@ -14,8 +15,6 @@ target_link_libraries(server_lib
 add_executable(r-type_server
     src/main.cpp
     src/Server.cpp
-    src/Connection.cpp
-    src/ReliableChannel.cpp
     src/LobbyManager.cpp
 )
 
@@ -31,7 +30,6 @@ target_link_libraries(r-type_server
 if(BUILD_TESTS)
     add_executable(server_tests
         tests/ServerTest.cpp
-        tests/ConnectionTest.cpp
         tests/ReliableChannelTest.cpp
         tests/LobbyManagerTest.cpp
     )

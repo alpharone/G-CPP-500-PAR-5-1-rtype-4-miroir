@@ -27,6 +27,13 @@ CPMAddPackage(
   GIT_TAG v3.5.0
 )
 
+CPMAddPackage(
+  NAME asio
+  GIT_REPOSITORY https://github.com/chriskohlhoff/asio.git
+  GIT_TAG asio-1-28-1 # choisis un tag stable
+  OPTIONS "ASIO_SEPARATE_COMPILATION=OFF"
+)
+
 if(Catch2_ADDED)
   list(APPEND CMAKE_MODULE_PATH ${Catch2_SOURCE_DIR}/extras)
   include(Catch)

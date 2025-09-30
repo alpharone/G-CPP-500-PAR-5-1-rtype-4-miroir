@@ -2,7 +2,7 @@ add_library(client_lib
     src/Client.cpp
 )
 
-target_include_directories(client_lib PUBLIC include)
+target_include_directories(client_lib PUBLIC include ${asio_SOURCE_DIR}/asio/include)
 target_link_libraries(client_lib
     PUBLIC
         engine

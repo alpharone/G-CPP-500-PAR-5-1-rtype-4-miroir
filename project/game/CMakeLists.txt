@@ -9,9 +9,11 @@ add_library(game SHARED
 target_include_directories(game PUBLIC include)
 
 target_link_libraries(game
-    PRIVATE shared::engine
-    PRIVATE shared::components
-    PRIVATE shared::systems
+    PRIVATE 
+        engine
+        components
+        systems
+        network
 )
 
 add_library(shared::game ALIAS game)

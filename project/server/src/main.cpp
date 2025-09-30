@@ -5,7 +5,17 @@
 ** main
 */
 
+#include <iostream>
+#include <asio.hpp>
+#include "Server.hpp"
+
 int main()
 {
-    return 0;
+    try {
+        asio::io_context ctx;
+        Server::Server s(ctx, 4242);
+        ctx.run();
+    } catch (std::exception& e) {
+        std::cerr << "Fatal: " << e.what() << "\n";
+    }
 }

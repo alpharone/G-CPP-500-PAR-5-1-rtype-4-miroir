@@ -1,8 +1,5 @@
 add_library(network
-    src/Packet.cpp
-    src/Serializer.cpp
-    src/MessageHeader.cpp
-    src/MessageType.cpp
+    src/Packets.cpp
 )
 
 target_include_directories(network PUBLIC include)
@@ -11,9 +8,6 @@ target_link_libraries(network PRIVATE engine)
 if(BUILD_TESTS)
     add_executable(network_tests
         tests/PacketTest.cpp
-        tests/SerializerTest.cpp
-        tests/MessageHeaderTest.cpp
-        tests/MessageTypeTest.cpp
     )
     target_link_libraries(network_tests PRIVATE network Catch2::Catch2WithMain)
     catch_discover_tests(network_tests)

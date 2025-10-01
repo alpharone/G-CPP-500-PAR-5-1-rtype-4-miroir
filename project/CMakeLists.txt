@@ -1,11 +1,6 @@
 add_subdirectory(engine)
-add_subdirectory(components)
-add_subdirectory(systems)
 add_subdirectory(server)
-add_subdirectory(game)
 add_subdirectory(client)
-add_subdirectory(network)
-add_subdirectory(tools)
 
 add_custom_target(project_clean
     COMMENT "-> start clean project"

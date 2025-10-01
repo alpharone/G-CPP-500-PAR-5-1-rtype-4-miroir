@@ -1,0 +1,1 @@
+/usr/bin/c++ -fPIC -Wl,--dependency-file=CMakeFiles/tools.dir/link.d -shared -Wl,-soname,libtools.so -o libtools.so CMakeFiles/tools.dir/src/Logger.cpp.o CMakeFiles/tools.dir/src/ConfigManager.cpp.o

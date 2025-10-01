@@ -6,7 +6,7 @@ add_library(server_lib
 target_include_directories(server_lib PUBLIC include ${asio_SOURCE_DIR}/asio/include)
 target_link_libraries(server_lib
     PUBLIC
-        engine
+        ecs
         network
         game
         tools

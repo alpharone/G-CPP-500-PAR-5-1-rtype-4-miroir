@@ -1,0 +1,1 @@
+/usr/bin/c++ -fPIC -Wl,--dependency-file=CMakeFiles/network.dir/link.d -shared -Wl,-soname,libnetwork.so -o libnetwork.so CMakeFiles/network.dir/src/Packets.cpp.o  -Wl,-rpath,/home/nathan/Documents/epitech/tek3/cpp/repo/project/engine/ecs ../ecs/libecs.so

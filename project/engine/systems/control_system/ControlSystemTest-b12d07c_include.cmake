@@ -1,0 +1,5 @@
+if(EXISTS "/home/nathan/Documents/epitech/tek3/cpp/repo/project/engine/systems/control_system/ControlSystemTest-b12d07c_tests.cmake")
+  include("/home/nathan/Documents/epitech/tek3/cpp/repo/project/engine/systems/control_system/ControlSystemTest-b12d07c_tests.cmake")
+else()
+  add_test(ControlSystemTest_NOT_BUILT-b12d07c ControlSystemTest_NOT_BUILT-b12d07c)
+endif()

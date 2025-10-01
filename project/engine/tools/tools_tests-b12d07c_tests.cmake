@@ -1,5 +1,0 @@
-add_test( [==[LoggerTest example]==] /home/nathan/Documents/epitech/tek3/cpp/repo/project/engine/tools/tools_tests [==[LoggerTest example]==]  )
-set_tests_properties( [==[LoggerTest example]==] PROPERTIES WORKING_DIRECTORY /home/nathan/Documents/epitech/tek3/cpp/repo/project/engine/tools)
-add_test( [==[ConfigManagerTest example]==] /home/nathan/Documents/epitech/tek3/cpp/repo/project/engine/tools/tools_tests [==[ConfigManagerTest example]==]  )
-set_tests_properties( [==[ConfigManagerTest example]==] PROPERTIES WORKING_DIRECTORY /home/nathan/Documents/epitech/tek3/cpp/repo/project/engine/tools)
-set( tools_tests_TESTS [==[LoggerTest example]==] [==[ConfigManagerTest example]==])

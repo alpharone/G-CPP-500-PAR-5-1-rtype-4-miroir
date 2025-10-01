@@ -1,7 +1,0 @@
-add_test( [==[ServerTest example]==] /home/nathan/Documents/epitech/tek3/cpp/repo/project/server/server_tests [==[ServerTest example]==]  )
-set_tests_properties( [==[ServerTest example]==] PROPERTIES WORKING_DIRECTORY /home/nathan/Documents/epitech/tek3/cpp/repo/project/server)
-add_test( [==[ReliableChannelTest example]==] /home/nathan/Documents/epitech/tek3/cpp/repo/project/server/server_tests [==[ReliableChannelTest example]==]  )
-set_tests_properties( [==[ReliableChannelTest example]==] PROPERTIES WORKING_DIRECTORY /home/nathan/Documents/epitech/tek3/cpp/repo/project/server)
-add_test( [==[LobbyManagerTest example]==] /home/nathan/Documents/epitech/tek3/cpp/repo/project/server/server_tests [==[LobbyManagerTest example]==]  )
-set_tests_properties( [==[LobbyManagerTest example]==] PROPERTIES WORKING_DIRECTORY /home/nathan/Documents/epitech/tek3/cpp/repo/project/server)
-set( server_tests_TESTS [==[ServerTest example]==] [==[ReliableChannelTest example]==] [==[LobbyManagerTest example]==])

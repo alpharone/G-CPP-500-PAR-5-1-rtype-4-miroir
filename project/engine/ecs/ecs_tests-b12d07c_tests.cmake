@@ -1,5 +1,0 @@
-add_test( [==[EntityTest example]==] /home/nathan/Documents/epitech/tek3/cpp/repo/project/engine/ecs/ecs_tests [==[EntityTest example]==]  )
-set_tests_properties( [==[EntityTest example]==] PROPERTIES WORKING_DIRECTORY /home/nathan/Documents/epitech/tek3/cpp/repo/project/engine/ecs)
-add_test( [==[RegistryTest example]==] /home/nathan/Documents/epitech/tek3/cpp/repo/project/engine/ecs/ecs_tests [==[RegistryTest example]==]  )
-set_tests_properties( [==[RegistryTest example]==] PROPERTIES WORKING_DIRECTORY /home/nathan/Documents/epitech/tek3/cpp/repo/project/engine/ecs)
-set( ecs_tests_TESTS [==[EntityTest example]==] [==[RegistryTest example]==])

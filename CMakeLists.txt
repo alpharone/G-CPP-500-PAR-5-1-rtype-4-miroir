@@ -47,6 +47,7 @@ add_custom_target(fclean
       client_clean
       component_clean
       engine_clean
+      ecs_clean
       game_clean
       network_clean
       server_clean

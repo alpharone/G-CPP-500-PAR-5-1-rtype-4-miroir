@@ -1,1 +1,0 @@
-/usr/bin/c++ -fPIC -Wl,--dependency-file=CMakeFiles/ecs.dir/link.d -shared -Wl,-soname,libecs.so -o libecs.so CMakeFiles/ecs.dir/src/Entity.cpp.o CMakeFiles/ecs.dir/src/Registry.cpp.o

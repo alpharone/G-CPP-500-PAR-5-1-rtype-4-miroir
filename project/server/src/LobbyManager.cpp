@@ -5,22 +5,22 @@
 ** LobbyManager
 */
 
-#include "LobbyManager.hpp"
+// #include "LobbyManager.hpp"
 
-void Server::Room::addPlayer(Server::Connection* c)
-{
-    players.push_back(c);
-}
+// void Server::Room::addPlayer(Server::Connection* c)
+// {
+//     players.push_back(c);
+// }
 
-Server::Room& Server::LobbyManager::createRoom()
-{
-    int id = _nextId;
+// Server::Room& Server::LobbyManager::createRoom()
+// {
+//     int id = _nextId;
 
-    _nextId += 1;
-    return _rooms[id];
-}
+//     _nextId += 1;
+//     return _rooms[id];
+// }
 
-Server::Room& Server::LobbyManager::getRoom(int id)
-{
-    return _rooms.at(id);
-}
+// Server::Room& Server::LobbyManager::getRoom(int id)
+// {
+//     return _rooms.at(id);
+// }

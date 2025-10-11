@@ -83,6 +83,11 @@ namespace Ecs {
                 return _data.size();
             }
 
+            size_type empty() const noexcept
+            {
+                return _data.empty();
+            }
+
             reference_type insert_at(size_type pos, Component const& c)
             {
                 if (pos >= _data.size()) {

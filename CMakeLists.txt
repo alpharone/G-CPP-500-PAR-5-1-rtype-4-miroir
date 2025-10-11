@@ -3,10 +3,11 @@ project(r-type LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(BUILD_SHARED_LIBS ON)
 
 option(BUILD_TESTS "Build unit tests" ON)
 option(BUILD_PLUGINS "Build dynamic plugins" ON)
-
 include(CTest)
 
 if (BUILD_TESTS)
@@ -14,11 +15,11 @@ if (BUILD_TESTS)
 endif()
 
 include(cmake/CPM.cmake)
-
 CPMAddPackage(
-  NAME SFML
-  GIT_REPOSITORY https://github.com/SFML/SFML.git
-  GIT_TAG 2.6.x
+  NAME raylib
+  GIT_REPOSITORY https://github.com/raysan5/raylib
+  GIT_TAG 5.5
+  OPTIONS "BUILD_SHARED_LIBS=ON"
 )
 
 CPMAddPackage(
@@ -30,7 +31,7 @@ CPMAddPackage(
 CPMAddPackage(
   NAME asio
   GIT_REPOSITORY https://github.com/chriskohlhoff/asio.git
-  GIT_TAG asio-1-28-1 # choisis un tag stable
+  GIT_TAG asio-1-28-1
   OPTIONS "ASIO_SEPARATE_COMPILATION=OFF"
 )
 
@@ -84,5 +85,5 @@ add_custom_target(re
     COMMENT "→ rebuild complet"
     COMMAND ${CMAKE_COMMAND} --build . --target fclean
     COMMAND cmake -S ${CMAKE_SOURCE_DIR} -B ${CMAKE_BINARY_DIR}
-    COMMAND ${CMAKE_COMMAND} --build .
+    COMMAND ${CMAKE_COMMAND} --build . -j
 )

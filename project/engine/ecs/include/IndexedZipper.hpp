@@ -1,9 +1,9 @@
-// /*
-// ** EPITECH PROJECT, 2025
-// ** bootstrap2
-// ** File description:
-// ** ZipperIterator
-// */
+/*
+** EPITECH PROJECT, 2025
+** bootstrap2
+** File description:
+** ZipperIterator
+*/
 
 #pragma once
 #include <tuple>

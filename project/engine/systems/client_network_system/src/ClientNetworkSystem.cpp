@@ -293,7 +293,7 @@ extern "C" std::shared_ptr<ISystem> createClientNetworkSystem(std::any params)
         sys->start();
         return sys;
     } catch (const std::exception& e) {
-        Logger::error(std::string("[ClientFactory] ") + e.what());
+        Logger::error(std::string("[ClientFactory]: bad any cast ") + e.what());
         return nullptr;
     }
 }

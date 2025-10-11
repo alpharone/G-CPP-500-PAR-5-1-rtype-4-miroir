@@ -12,21 +12,22 @@
 namespace Network {
 
     enum MessageType : uint8_t {
-        NEW_CLIENT = 0x01,
-        ACCEPT_CLIENT = 0x02,
-        CLIENT_INPUT = 0x03,
-        SERVER_SNAPSHOT = 0x04,
-        ENTITY_SPAWN = 0x05,
-        ENTITY_DESPAWN = 0x06,
-        GAME_EVENT = 0x07,
-        ACK = 0x08,
-        PING = 0x09,
-        PONG = 0x0A,
-        RELIABLE_FRAGMENT = 0x0B,
-        PLAYER_READY = 0x0C,
-        GAME_START = 0x0D,
-        GAME_OVER = 0x0E,
-        ADMIN_TEXT = 0xFF
+        NEW_CLIENT = 1,
+        ACCEPT_CLIENT,
+        CLIENT_INPUT,
+        SERVER_SNAPSHOT,
+        ENTITY_SPAWN,
+        ENTITY_DESPAWN,
+        GAME_EVENT,
+        ACK,
+        PING,
+        PONG,
+        RELIABLE_FRAGMENT,
+        PLAYER_READY,
+        GAME_START,
+        GAME_OVER,
+        ADMIN_TEXT,
+        PLAYER_INPUT
     };
 
 }

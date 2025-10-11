@@ -19,8 +19,10 @@ std::vector<uint8_t> Network::Packet::serialize() const
 
 Network::Packet Network::Packet::deserialize(const uint8_t* data, size_t len)
 {
+    if (len < sizeof(MessageHeader)) {
+        throw std::runtime_error("Invalid packet: too short");
+    }
     Packet p;
-
     std::memcpy(&p.header, data, sizeof(MessageHeader));
     if (len > sizeof(MessageHeader)) {
         p.payload.resize(len - sizeof(MessageHeader));

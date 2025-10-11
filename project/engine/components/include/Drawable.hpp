@@ -9,18 +9,21 @@
 
 #include <cstdint>
 #include <string>
+#include <raylib.h>
 
 namespace Component {
 
     struct drawable_t {
-        uint16_t w;
-        uint16_t h;
-        uint32_t color;
-        std::string spriteId;
-
+        std::string texturePath;
+        Color color = WHITE;
+        bool isPlayer = false;
+        int z = 0;
+        Texture2D texture{ 0 };
+        bool loaded = false;
+        
         drawable_t() = default;
-        drawable_t(uint16_t _w, uint16_t _h, uint32_t _color, std::string _spriteId) noexcept :
-        w(_w), h(_h), color(_color), spriteId(_spriteId){}
+        drawable_t(std::string _texturePath, Color _color, bool _isPlayer, int _z, Texture2D _texture, bool _loaded) noexcept :
+        texturePath(_texturePath), color(_color), isPlayer(_isPlayer), z(_z), texture(_texture), loaded(_loaded) {}
     };
 
 }

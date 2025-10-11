@@ -17,6 +17,8 @@ target_link_libraries(RenderSystem
         ecs
         components
         tools
+        raylib
+        network
 )
 
 if(BUILD_TESTS)

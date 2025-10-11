@@ -2,6 +2,8 @@ add_library(components INTERFACE)
 
 target_include_directories(components INTERFACE include)
 
+target_link_libraries(components INTERFACE raylib)
+
 add_library(shared::components ALIAS components)
 
 add_custom_target(component_clean

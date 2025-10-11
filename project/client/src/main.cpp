@@ -5,46 +5,42 @@
 ** main.cpp
 */
 
-// #include "MessageHeader.hpp"
-// #include "MessageType.hpp"
-// #include "Packets.hpp"
-// #include <asio.hpp>
-// #include <iostream>
-
-// int main() {
-//     asio::io_context ctx;
-//     asio::ip::udp::socket sock(ctx, asio::ip::udp::endpoint(asio::ip::udp::v4(), 0));
-//     asio::ip::udp::endpoint server(asio::ip::make_address("127.0.0.1"), 4242);
-
-//     Network::Packet p;
-//     p.header.type = Network::NEW_CLIENT;
-//     p.header.length = 0;
-//     p.header.seq = 1;
-//     p.header.flags = 0;
-//     auto data = p.serialize();
-//     sock.send_to(asio::buffer(data), server);
-//     std::cout << "[Client] Sent NEW_CLIENT\n";
-
-//     std::array<uint8_t, 1024> buf;
-//     asio::ip::udp::endpoint sender;
-//     size_t len = sock.receive_from(asio::buffer(buf), sender);
-
-//     auto reply = Network::Packet::deserialize(buf.data(), len);
-//     if (reply.header.type == Network::ACCEPT_CLIENT) {
-//         uint32_t clientId;
-//         std::memcpy(&clientId, reply.payload.data(), sizeof(uint32_t));
-//         std::cout << "[Client] Got ACCEPT_CLIENT -> id=" << clientId << "\n";
-//     }
-
-#include "ClientApp.hpp"
+#include <raylib.h>
+#include <chrono>
+#include <thread>
+#include <asio.hpp>
+#include "SystemManager.hpp"
+#include "Logger.hpp"
+#include "Registry.hpp"
+#include "NetworkContext.hpp"
 
 int main()
 {
-    ClientApp app;
+    Logger::init("logs/client.log");
+    Ecs::Registry registry;
+    SystemManager manager;
+    SystemCatalog catalog;
 
-    if (!app.init())
-        return -1;
-    app.mainLoop();
-    app.shutdown();
+    auto netCtx = std::make_shared<NetworkContext>();
+
+    catalog.registerSystem("client_net", "./plugins/systems/libClientNetworkSystem.so", "createClientNetworkSystem");
+    catalog.registerSystem("render", "./plugins/systems/libRenderSystem.so", "createRenderSystem");
+    catalog.registerSystem("input", "./plugins/systems/libInputSystem.so", "createInputSystem");
+
+    auto render = catalog.loadSystem("render", std::any(std::make_tuple(800, 600, std::string("R-Type Client"), netCtx)));
+    auto clientNet = catalog.loadSystem("client_net", std::any(std::make_tuple(std::string("127.0.0.1"), (unsigned short)4242, netCtx)));
+    auto input = catalog.loadSystem("input", std::any(netCtx));
+
+    manager.registerSystem(render);
+    manager.registerSystem(input);
+    manager.registerSystem(clientNet);
+
+    const float dt = 1.f / 60.f;
+    while (!WindowShouldClose()) {
+        manager.updateAll(registry, dt);
+    }
+    Logger::info("[Client] Shutting down systems...");
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    Logger::shutdown();
     return 0;
 }

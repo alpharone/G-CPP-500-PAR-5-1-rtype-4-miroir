@@ -3,6 +3,7 @@ add_library(client_lib
 )
 
 target_include_directories(client_lib PUBLIC include ${asio_SOURCE_DIR}/asio/include)
+
 target_link_libraries(client_lib
     PUBLIC
         ecs
@@ -10,6 +11,8 @@ target_link_libraries(client_lib
         game
         tools
         components
+        systems
+        raylib
 )
 
 add_executable(r-type_client
@@ -27,7 +30,6 @@ set_target_properties(r-type_client PROPERTIES
 target_link_libraries(r-type_client
     PRIVATE
         client_lib
-        sfml-graphics sfml-audio sfml-window sfml-system
 )
 
 if(BUILD_TESTS)
@@ -45,7 +47,7 @@ add_custom_target(client_clean
     COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_CURRENT_BINARY_DIR}/Makefile
     COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_CURRENT_BINARY_DIR}/cmake_install.cmake
     COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_CURRENT_BINARY_DIR}/client_tests*
-    COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_CURRENT_BINARY_DIR}/libclient_lib.so
+    COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_CURRENT_BINARY_DIR}/libclient_lib.*
     COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_CURRENT_BINARY_DIR}/CTestTestfile.cmake
     COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles
     COMMENT "=> client_clean finished"

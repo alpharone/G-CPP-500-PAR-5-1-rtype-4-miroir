@@ -1,0 +1,41 @@
+name: CI R-TYPE
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
+
+jobs:
+  validate:
+    if: github.head_ref == 'dev'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Display info
+        run: |
+          echo "Comparing branch: ${{ github.head_ref }} → ${{ github.base_ref }}"
+
+      - name: Show diff (optionnel)
+        run: |
+          git fetch origin main
+          git fetch origin dev
+          git diff origin/main..origin/dev --stat
+
+      - name: Build project
+        run: |
+          echo "Building project from dev branch..."
+          mkdir -p build && cd build
+          cmake ..
+          make -j$(nproc)
+
+      - name: Run tests
+        run: |
+          echo "Running tests..."
+          cd build
+          ctest --output-on-failure

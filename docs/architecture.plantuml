@@ -1,0 +1,350 @@
+@startuml Architecture
+
+package "Shared::Engine" #LightBlue {
+  class Entity {
+    - size_t _id
+    + explicit Entity(size_t id) noexcept
+    + operator size_t() const noexcept : size_t
+    + bool operator==(const Entity& other) const noexcept
+    + bool operator!=(const Entity& other) const noexcept
+  }
+
+  class "SparseArray<T>" {
+    - std::vector<std::optional<T>> _data
+    + std::optional<T>& operator[](size_t idx)
+    + const std::optional<T>& operator[](size_t idx) const
+    + iterator begin() noexcept
+    + iterator end() noexcept
+    + const_iterator cbegin() const noexcept
+    + const_iterator cend() const noexcept
+    + template<typename... Params> T& emplaceAt(size_t idx, Params&&... params)
+    + void insertAt(size_t idx, const T& value)
+    + void erase(size_t idx)
+    + size_t size() const noexcept
+  }
+
+  class Registry {
+    - size_t _next_id
+    - std::vector<size_t> _free_ids
+    - std::unordered_map<std::type_index, std::any> _components
+    - std::vector<std::function<void(Registry&, const Entity&)>> _eraseCallbacks
+    - std::vector<std::function<void(Registry&)>> _systems
+    + Entity spawn_entity()
+    + void kill_entity(const Entity& e)
+    + template<typename Component> void registerComponent()
+    + template<typename Component> SparseArray<Component>& getComponents()
+    + template<typename Component, typename... Params> Component& emplaceComponent(const Entity& e, Params&&... params)
+    + template<typename Component> void removeComponent(const Entity& e)
+    + template<typename... Components, typename Function> void addSystem(Function&& f)
+    + void run_systems()
+  }
+
+  class Zipper {
+    + template<typename... Containers> auto makeZipper(Containers&... c)
+    + template<typename... Containers> auto makeIndexedZipper(Containers&... c)
+  }
+}
+
+package "Shared::Components" #LightGreen {
+  struct Position {
+    + float x
+    + float y
+  }
+  struct Velocity {
+    + float vx
+    + float vy
+  }
+  struct Drawable {
+    + uint16_t w
+    + uint16_t h
+    + uint32_t color
+    + std::string spriteId
+  }
+  struct Controllable {}
+  struct Health {
+    + int hp
+  }
+  struct NetworkId {
+    + uint32_t id
+  }
+  struct EnemyAI {
+    + int pattern
+    + float cooldown
+  }
+  struct Projectile {
+    + float dmg
+    + int ownerId
+  }
+  struct Damage {
+    + float amount
+  }
+}
+
+package "Engine::Systems" #LightYellow {
+  interface ISystem {
+    + virtual void update(Registry& r, float dt) = 0
+  }
+  
+  note as N1 #Orange
+    "Dynamic lib"
+  end note
+
+  class PositionSystem {
+    + void update(Registry& r, float dt) override
+  }
+  class ControlSystem {
+    + void update(Registry& r, float dt) override
+  }
+  class PhysicsSystem {
+    + void update(Registry& r, float dt) override
+  }
+  class CollisionSystem {
+    + void update(Registry& r, float dt) override
+  }
+  class SpawnSystem {
+    + void update(Registry& r, float dt) override
+  }
+  class AISystem {
+    + void update(Registry& r, float dt) override
+  }
+  class ProjectileSystem {
+    + void update(Registry& r, float dt) override
+  }
+  class CleanupSystem {
+    + void update(Registry& r, float dt) override
+  }
+  class RenderSystem {
+    + void update(Registry& r, float dt) override
+  }
+  class SoundSystem {
+    + void update(Registry& r, float dt) override
+  }
+
+  ISystem <|-- PositionSystem
+  ISystem <|-- ControlSystem
+  ISystem <|-- PhysicsSystem
+  ISystem <|-- CollisionSystem
+  ISystem <|-- SpawnSystem
+  ISystem <|-- AISystem
+  ISystem <|-- ProjectileSystem
+  ISystem <|-- CleanupSystem
+  ISystem <|-- RenderSystem
+  ISystem <|-- SoundSystem
+}
+
+package "Engine::DynamicSystems" #LightPink {
+
+  class SystemCatalog {
+    - std::map<std::string, std::string> libraryPaths
+    + void registerSystem(const std::string& name, const std::string& path)
+    + std::shared_ptr<ISystem> loadSystem(const std::string& name, std::any params)
+  }
+
+}
+
+package "Network::Protocol" #MistyRose {
+  enum MessageType {
+    NEW_CLIENT = 0x01,
+    ACCEPT_CLIENT = 0x02,
+    CLIENT_INPUT = 0x03,
+    SERVER_SNAPSHOT = 0x04,
+    ENTITY_SPAWN = 0x05,
+    ENTITY_DESPAWN = 0x06,
+    GAME_EVENT = 0x07,
+    ACK = 0x08,
+    PING = 0x09,
+    PONG = 0x0A,
+    RELIABLE_FRAGMENT = 0x0B,
+    PLAYER_READY = 0x0C,
+    GAME_START = 0x0D,
+    GAME_OVER = 0x0E,
+    ADMIN_TEXT = 0xFF
+  }
+
+  struct MessageHeader {
+    + uint8_t type
+    + uint16_t length
+    + uint32_t seq
+    + uint8_t flags
+  }
+
+  class Packet {
+    + MessageHeader header
+    + std::vector<uint8_t> payload
+    + std::vector<uint8_t> serialize() const
+    + static Packet deserialize(const std::vector<uint8_t>& data)
+  }
+
+  ' class Serializer {'
+  '   + void writeUint8(uint8_t v)'
+  '   + void writeUint16(uint16_t v)'
+  '   + void writeUint32(uint32_t v)'
+  '   + void writeFloat32(float v)'
+  '   + uint8_t readUint8()'
+  '   + uint16_t readUint16()'
+  '   + uint32_t readUint32()'
+  '   + float readFloat32()'
+  '   + Packet serializeSnapshot(const Registry& r, const std::vector<Entity>& visible)'
+  '   + void deserializeSnapshot(const Packet& p, Registry& r)'
+  ' }'
+}
+
+package "Network::Server" #Thistle {
+  struct Connection {
+    + asio::ip::udp::endpoint endpoint
+    + ReliableChannel reliable
+    + std::queue<Network::Packet> pending_packet
+    + bool ready{false}
+    + uint32_t clientId{0}
+  }
+
+  class ReliableChannel {
+    - uint32_t nextSeq
+    - std::map<uint32_t, Packet> sendBuffer
+    ' - std::chrono::milliseconds rttEstimate '
+    + void sendReliable(Packet& p)
+    + void onAck(uint32_t seq)
+    + std::vector<Packet> getPendingResend()
+    ' + void tickRetransmit(std::chrono::steady_clock::time_point now)'
+    ' + void fragmentAndSend(Packet& p, size_t mtu)'
+  }
+
+  class LobbyManager {
+    - std::map<int, Room> rooms
+    + void joinLobby(Connection& c)
+    + void leaveLobby(Connection& c)
+    + Room& createRoom()
+    + void setReady(Connection& c, bool ready)
+  }
+
+  class Room {
+    - GameInstance instance
+    - std::vector<Connection*> players
+    - enum State { WAITING, RUNNING, FINISHED } state
+    + void addPlayer(Connection& c)
+    + void removePlayer(Connection& c)
+    + void broadcastReliable(const Packet& p)
+    + void broadcastUnreliable(const Packet& p)
+  }
+
+  class Server {
+    - asio::ip::udp::socket _socket
+    - asio::ip::udp::endpoint _remote
+    - std::array<uint8_t, 2048> _buffer
+    - std::unordered_map<std::string, Connection> _connections
+    - LobbyManager _lobbies
+    - uint32_t _nextClientId{1}
+    - void doReceive()
+    - void handlePacket(Network::Packet& p, asio::ip::udp::endpoint& sender)
+    - void sendPacket(Connection& c, Network::Packet& p, bool reliable)
+    - void tick()
+    + Server(asio::io_context& ctx, unsigned short port)
+  }
+}
+
+package "Game::Server" #LightCoral {
+  class GameInstance {
+    - Registry registry
+    - SystemManager systemManager
+    - Map mapData
+    - uint32_t tickRate
+    - std::queue<GameEvent> eventQueue
+    + void tick()
+    + void addPlayer(Connection& c, uint32_t clientId)
+    + void removePlayer(uint32_t clientId)
+    + void applyInput(uint32_t clientId, const Input& in)
+    + Packet produceSnapshot()
+  }
+
+  class SystemManager {
+    - std::vector<ISystem*> systems
+    + void registerSystem(ISystem* s)
+    + void updateAll(Registry& r, float dt)
+  }
+
+  class MapLoader {
+    + Map loadMap(int mapId)
+  }
+
+  class Map {
+    - int width
+    - int height
+    - std::vector<int> tiles
+    + int getTile(int x, int y) const
+    + void setTile(int x, int y, int value)
+  }
+
+  class GameEvent {
+    + int type
+    + uint32_t entityId
+    + std::vector<uint8_t> data
+  }
+}
+
+package "Client" #LightSkyBlue {
+  class ClientApp {
+    - Registry registry
+    - NetworkClient net
+    - RenderLoop renderLoop
+    - InputManager input
+    - ResourceManager resources
+    - SnapshotManager snapshotMgr
+    - uint32_t localPlayerId
+    + void connect(const std::string& addr)
+    + void mainLoop()
+    + void onPacket(const Packet& p)
+    + void shutdown()
+  }
+
+  class NetworkClient {
+    - UdpSocket socket
+    - ReliableChannel reliable
+    + void send(const Packet& p)
+    + void onReceive(const std::vector<uint8_t>& raw)
+    + void tickIo()
+  }
+
+  class InputManager {
+    - std::vector<Input> pendingInputs
+    + void pollEvents()
+    + void pushInput(const Input& in)
+    + void sendInput(NetworkClient& net)
+    + void localPredict(Registry& r, const Input& in)
+  }
+
+  class ResourceManager {
+    - std::map<std::string, Texture> textures
+    - std::map<std::string, Sound> sounds
+    + void loadTexture(const std::string& id)
+    + void loadSound(const std::string& id)
+    + Texture& getTexture(const std::string& id)
+    + Sound& getSound(const std::string& id)
+  }
+
+  class SnapshotManager {
+    - std::map<uint32_t, ClientState> history
+    + void applySnapshot(const Packet& p, Registry& r)
+    + void reconcileLocalState(Registry& r, const std::vector<Input>& pending)
+  }
+
+  class RenderLoop {
+    - sf::RenderWindow window
+    + void renderFrame(const Registry& r)
+    + void loadAssets(ResourceManager& res)
+  }
+}
+
+package "Tools" #Wheat {
+  class Logger {
+    + void log(LogLevel level, const std::string& msg)
+  }
+  class ConfigManager {
+    + void load(const std::string& path)
+  }
+  class DlLoader {
+    + DlLoader(const std::string& path, const std::string& entrypoint)
+    + std::shared_ptr<T> createInstance(std::any params)
+  }
+}
+
+@enduml

@@ -1,0 +1,29 @@
+version: "3.9"
+
+services:
+  r-type_server:
+    build: .
+    container_name: r-type_server
+    command: ./r-type_server
+    ports:
+      - "4242:4242"
+    networks:
+      - rtype_net
+    stdin_open: true
+    tty: true
+
+  r-type_client:
+    build: .
+    command: ./r-type_client r-type_server 4242
+    networks:
+      - rtype_net
+    stdin_open: true
+    tty: true
+    environment:
+      - DISPLAY=${DISPLAY}
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+
+networks:
+  rtype_net:
+    driver: bridge

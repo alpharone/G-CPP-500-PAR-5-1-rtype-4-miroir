@@ -22,6 +22,8 @@ class SystemManager {
         void registerSystem(const std::string& name, const std::string& path, const std::string& entrypoint);    
         void addSystem(const std::string& name, std::any params = {});
         void updateAll(Ecs::Registry& registry, float dt);
+        void shutdownAll();
+        void clearAll();
     
     private:
         std::vector<std::shared_ptr<ISystem>> _systems;

@@ -13,4 +13,5 @@ class ISystem {
     public:
         virtual ~ISystem() = default;
         virtual void update(Ecs::Registry& r, float dt) = 0;
+        virtual void shutdown() {};
 };

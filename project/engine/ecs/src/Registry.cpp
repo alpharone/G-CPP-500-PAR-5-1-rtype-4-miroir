@@ -25,7 +25,8 @@ void Ecs::Registry::killEntity(Entity const& Entity)
     _free_ids.push_back(static_cast<size_t>(Entity));
 }
 
-void Ecs::Registry::runSystems() {
+void Ecs::Registry::runSystems()
+{
     for (auto& sys : _systems) {
         sys(*this);
     }

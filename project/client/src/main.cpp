@@ -31,15 +31,17 @@ int main()
     auto clientNet = catalog.loadSystem("client_net", std::any(std::make_tuple(std::string("127.0.0.1"), (unsigned short)4242, netCtx)));
     auto input = catalog.loadSystem("input", std::any(netCtx));
 
-    manager.registerSystem(render);
-    manager.registerSystem(input);
     manager.registerSystem(clientNet);
+    manager.registerSystem(input);
+    manager.registerSystem(render);
 
     const float dt = 1.f / 60.f;
     while (!WindowShouldClose()) {
         manager.updateAll(registry, dt);
     }
     Logger::info("[Client] Shutting down systems...");
+    manager.shutdownAll();
+    manager.clearAll();
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     Logger::shutdown();
     return 0;

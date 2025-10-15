@@ -31,6 +31,7 @@ RenderSystem::~RenderSystem()
 
 void RenderSystem::update(Ecs::Registry& registry, float)
 {
+
     if (!IsWindowReady())
         return;
 
@@ -42,43 +43,50 @@ void RenderSystem::update(Ecs::Registry& registry, float)
     auto& drawables = registry.getComponents<Component::drawable_t>();
     size_t count = std::min(positions.size(), drawables.size());
 
-    std::vector<size_t> entities;
-    entities.reserve(count);
-    for (size_t i = 0; i < count; i++)
-        if (positions[i].has_value() && drawables[i].has_value())
-            entities.push_back(i);
+    struct DrawEntry {
+        size_t id;
+        Component::position_t pos;
+        Component::drawable_t draw;
+    };
 
-    std::stable_sort(entities.begin(), entities.end(), [&](size_t a, size_t b) {
-        return drawables[a]->z < drawables[b]->z;
-    });
+    std::vector<DrawEntry> entries;
+    entries.reserve(count);
 
-    for (size_t id : entities) {
-        const auto& pos = positions[id].value();
-        auto& draw = const_cast<Component::drawable_t&>(drawables[id].value());
+    for (size_t i = 0; i < count; ++i) {
+        if (positions[i].has_value() && drawables[i].has_value()) {
+            entries.push_back({i, positions[i].value(), drawables[i].value()});
+        }
+    }
 
-        Color tint = draw.color;
-        bool isLocal = (_ctx && _ctx->playerId == static_cast<uint32_t>(id));
+    std::stable_sort(entries.begin(), entries.end(),
+                     [](const DrawEntry& a, const DrawEntry& b) {
+                         return a.draw.z < b.draw.z;
+                     });
 
-        if (!draw.texturePath.empty() && !draw.loaded) {
-            draw.texture = _sprites.load(draw.texturePath);
-            draw.loaded = (draw.texture.id != 0);
-            if (draw.loaded)
-                Logger::info("[Render] Loaded texture: " + draw.texturePath);
+    for (auto& e : entries) {
+        const auto& p = e.pos;
+        const auto& d = e.draw;
+
+        Color tint = d.color;
+        bool isLocal = (_ctx && _ctx->playerId == static_cast<uint32_t>(e.id));
+
+        if (!d.texturePath.empty()) {
+            Texture2D tex = _sprites.load(d.texturePath);
+            if (tex.id != 0) {
+                float x = p.x - tex.width / 2.0f;
+                float y = p.y - tex.height / 2.0f;
+                DrawTexture(tex, static_cast<int>(x), static_cast<int>(y), tint);
+
+                if (isLocal)
+                    DrawRectangleLines(static_cast<int>(x) - 2, static_cast<int>(y) - 2,
+                                       tex.width + 4, tex.height + 4, WHITE);
+                continue;
+            }
         }
 
-        if (draw.loaded && draw.texture.id != 0) {
-            float x = pos.x - draw.texture.width / 2.0f;
-            float y = pos.y - draw.texture.height / 2.0f;
-            DrawTexture(draw.texture, static_cast<int>(x), static_cast<int>(y), tint);
-
-            if (isLocal)
-                DrawRectangleLines(static_cast<int>(x) - 2, static_cast<int>(y) - 2,
-                                   draw.texture.width + 4, draw.texture.height + 4, WHITE);
-        } else {
-            DrawCircle(static_cast<int>(pos.x), static_cast<int>(pos.y), 12.f, tint);
-            if (isLocal)
-                DrawCircleLines(static_cast<int>(pos.x), static_cast<int>(pos.y), 15.f, WHITE);
-        }
+        DrawCircle(static_cast<int>(p.x), static_cast<int>(p.y), 12.f, tint);
+        if (isLocal)
+            DrawCircleLines(static_cast<int>(p.x), static_cast<int>(p.y), 15.f, WHITE);
     }
 
     EndDrawing();

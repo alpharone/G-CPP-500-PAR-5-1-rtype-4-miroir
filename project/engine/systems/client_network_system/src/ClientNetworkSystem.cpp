@@ -39,17 +39,49 @@ ClientNetworkSystem::ClientNetworkSystem(const std::string& host, unsigned short
     }
 }
 
-ClientNetworkSystem::~ClientNetworkSystem()
+void ClientNetworkSystem::shutdown()
 {
-    _running = false;
-    if (_socket && _socket->is_open()) {
+    Logger::info("[Client] Shutdown initiated...");
+    if (!_running.exchange(false)) {
+        Logger::info("[Client] shutdown: already stopped");
+    }
+
+    if (_ctx && _ctx->playerId != UINT32_MAX) {
+        Network::Packet p;
+        p.header.type = Network::ENTITY_DESPAWN;
+        p.payload.resize(sizeof(uint32_t));
+        uint32_t id = _ctx->playerId;
+        std::memcpy(p.payload.data(), &id, sizeof(uint32_t));
+        try {
+            _socket->send_to(asio::buffer(p.serialize()), _serverEndpoint);
+            Logger::info("[Client] Sent disconnect (ENTITY_DESPAWN) for id=" + std::to_string(id));
+        } catch (const std::exception& e) {
+            Logger::error(std::string(std::string("[Client] Failed to shutdown: ") + e.what()));
+        }
+    }
+
+    if (_socket) {
         std::error_code ec;
+        _socket->cancel(ec);
         _socket->close(ec);
     }
+
     _io.stop();
-    if (_ioThread.joinable())
+    if (_ioThread.joinable()) {
+        Logger::info("[Client] Joining IO thread...");
         _ioThread.join();
+    }
+
+    Logger::info("[Client] IO stopped cleanly");
 }
+
+ClientNetworkSystem::~ClientNetworkSystem()
+{
+    Logger::info("[Client] Destructor starting...");
+    stopIo();
+    Logger::info("[Client] Destructor complete");
+}
+
 
 void ClientNetworkSystem::start()
 {
@@ -75,18 +107,46 @@ void ClientNetworkSystem::sendJoinRequest()
 
 void ClientNetworkSystem::startReceive()
 {
-    auto self_w = weak_from_this();
+    auto self = shared_from_this();
+
     _socket->async_receive_from(asio::buffer(_buffer), _senderEndpoint,
-        [this, self_w](std::error_code ec, std::size_t bytes) {
+        [this, self](std::error_code ec, std::size_t bytes) {
+            if (ec == asio::error::operation_aborted || !_running)
+                return;
+
             if (!ec && bytes > 0) {
                 std::vector<uint8_t> copy(bytes);
                 std::memcpy(copy.data(), _buffer.data(), bytes);
-                if (auto self = self_w.lock())
-                    self->onReceiveData(copy.data(), copy.size());
+                onReceiveData(copy.data(), copy.size());
             }
-            if (auto self = self_w.lock(); self && self->_running)
-                self->startReceive();
+
+            if (_running)
+                startReceive();
         });
+}
+
+void ClientNetworkSystem::stopIo()
+{
+    if (!_running.exchange(false))
+        return;
+
+    Logger::info("[Client] Stopping IO...");
+
+    sendDisconnect();
+
+    if (_socket && _socket->is_open()) {
+        std::error_code ec;
+        _socket->cancel(ec);
+        _socket->close(ec);
+    }
+
+    _io.post([this]() { _io.stop(); });
+
+    if (_ioThread.joinable()) {
+        Logger::info("[Client] Joining IO thread...");
+        _ioThread.join();
+    }
+    Logger::info("[Client] IO stopped cleanly");
 }
 
 void ClientNetworkSystem::onReceiveData(const uint8_t* data, size_t len)
@@ -112,7 +172,8 @@ void ClientNetworkSystem::onReceiveData(const uint8_t* data, size_t len)
                 break;
             }
 
-            default: break;
+            default:
+                break;
         }
     } catch (const std::exception& e) {
         Logger::error(std::string("[Client] deserialize error: ") + e.what());
@@ -173,6 +234,28 @@ void ClientNetworkSystem::handleEntitySpawn(const Network::Packet& pkt, Ecs::Reg
                  " room=" + std::to_string(entityRoom));
 }
 
+void ClientNetworkSystem::sendDisconnect()
+{
+    if (!_ctx || !_ctx->socket || !_ctx->socket->is_open())
+        return;
+
+    if (_ctx->playerId == UINT32_MAX)
+        return;
+
+    Network::Packet pkt;
+    pkt.header.type = Network::ENTITY_DESPAWN;
+    pkt.payload.resize(sizeof(uint32_t));
+    std::memcpy(pkt.payload.data(), &_ctx->playerId, sizeof(uint32_t));
+
+    try {
+        _socket->send_to(asio::buffer(pkt.serialize()), _serverEndpoint);
+        Logger::info("[Client] Sent disconnect (ENTITY_DESPAWN) for id=" +
+                     std::to_string(_ctx->playerId));
+    } catch (const std::exception& e) {
+        Logger::warn(std::string("[Client] sendDisconnect failed: ") + e.what());
+    }
+}
+
 void ClientNetworkSystem::handleSnapshot(const Network::Packet& pkt, Ecs::Registry& registry)
 {
     if (pkt.payload.size() < sizeof(uint16_t))
@@ -213,6 +296,9 @@ void ClientNetworkSystem::handleSnapshot(const Network::Packet& pkt, Ecs::Regist
             while (vel.size() <= id)
                 vel.insert_at(vel.size(), Component::velocity_t{});
         }
+
+        if (!pos[id].has_value() || !vel[id].has_value())
+            continue;
 
         pos[id].value().x = x;
         pos[id].value().y = y;

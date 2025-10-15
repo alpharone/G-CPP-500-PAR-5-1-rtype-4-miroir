@@ -7,11 +7,13 @@
 
 #include "SpriteManager.hpp"
 
-SpriteManager::~SpriteManager() {
+SpriteManager::~SpriteManager()
+{
     unloadAll();
 }
 
-Texture2D SpriteManager::load(const std::string& path) {
+Texture2D SpriteManager::load(const std::string& path)
+{
     if (path.empty())
         return Texture2D{0};
 
@@ -25,7 +27,8 @@ Texture2D SpriteManager::load(const std::string& path) {
     return _cache[path];
 }
 
-void SpriteManager::unloadAll() {
+void SpriteManager::unloadAll()
+{
     std::lock_guard<std::mutex> lock(_mtx);
 
     for (auto &kv : _cache) {

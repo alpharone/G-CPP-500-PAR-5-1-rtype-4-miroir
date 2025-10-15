@@ -11,7 +11,8 @@
 #include <chrono>
 #include <thread>
 
-int main() {
+int main()
+{
     Logger::init("logs/server.log");
     Ecs::Registry registry;
 
@@ -29,6 +30,8 @@ int main() {
         std::this_thread::sleep_for(std::chrono::milliseconds(16));
     }
 
+    manager.shutdownAll();
+    manager.clearAll();
     Logger::shutdown();
     return 0;
 }

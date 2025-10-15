@@ -1,5 +1,7 @@
 add_library(network
     src/Packets.cpp
+    src/ReliableChannel.cpp
+    src/Utils.cpp
 )
 
 target_include_directories(network PUBLIC include ${asio_SOURCE_DIR}/asio/include)

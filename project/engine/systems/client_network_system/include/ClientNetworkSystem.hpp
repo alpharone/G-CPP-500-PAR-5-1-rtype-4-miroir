@@ -32,6 +32,7 @@ class ClientNetworkSystem : public ISystem, public std::enable_shared_from_this<
         
         void start();
         void update(Ecs::Registry& registry, float dt) override;
+        void shutdown() override;
         
     private:
         void startReceive();
@@ -40,7 +41,9 @@ class ClientNetworkSystem : public ISystem, public std::enable_shared_from_this<
         void handleEntitySpawn(const Network::Packet& pkt, Ecs::Registry& registry);
         void handleSnapshot(const Network::Packet& pkt, Ecs::Registry& registry);
         void handleEntityDespawn(const Network::Packet& pkt, Ecs::Registry& registry);
-        
+        void sendDisconnect();
+        void stopIo();
+
         asio::io_context _io;
         std::shared_ptr<udp::socket> _socket;
         udp::endpoint _serverEndpoint;

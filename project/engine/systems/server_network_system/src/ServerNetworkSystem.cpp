@@ -90,6 +90,34 @@ void ServerNetworkSystem::onReceive(const udp::endpoint& from, const uint8_t* da
                 }
                 break;
             }
+            case Network::ENTITY_DESPAWN: {
+                bool removed = false;
+                for (auto& room : _rooms) {
+                    auto it = std::find_if(room->clients.begin(), room->clients.end(),
+                        [&](const auto& kv){
+                            return kv.second.endpoint == from;
+                        });
+                    if (it != room->clients.end()) {
+                        uint32_t localId = it->second.localId;
+                        uint32_t roomIndex = static_cast<uint32_t>(std::distance(_rooms.begin(),
+                            std::find_if(_rooms.begin(), _rooms.end(), [&](const std::unique_ptr<Room>& p){ return p.get() == room.get(); })));
+                        uint32_t globalId = roomIndex * 4 + localId;
+                    
+                        broadcastDespawn(*room, globalId);
+                    
+                        room->clients.erase(it);
+                        Logger::info("[Server] Client requested disconnect. Removed client localId=" + std::to_string(localId) +
+                                     " globalId=" + std::to_string(globalId));
+                        removed = true;
+                        break;
+                    }
+                }
+                if (!removed) {
+                    Logger::warn("[Server] Received ENTITY_DESPAWN but endpoint not found: " + from.address().to_string()
+                                 + ":" + std::to_string(from.port()));
+                }
+                break;
+            }
 
             default:
                 break;
@@ -189,6 +217,7 @@ void ServerNetworkSystem::applyInputs(Room& room, float dt, Ecs::Registry& regis
 void ServerNetworkSystem::sendSnapshotToRoom(Room& room, Ecs::Registry& registry)
 {
     auto& pos = registry.getComponents<Component::position_t>();
+    auto& vel = registry.getComponents<Component::velocity_t>();
     uint16_t count = 0;
     std::vector<uint8_t> payload(sizeof(uint16_t));
 
@@ -199,20 +228,20 @@ void ServerNetworkSystem::sendSnapshotToRoom(Room& room, Ecs::Registry& registry
 
     for (uint32_t localId = 0; localId < 4; localId++) {
         uint32_t globalId = roomIndex * 4 + localId;
-        if (globalId >= pos.size() || !pos[globalId].has_value())
+        if (globalId >= pos.size() || !pos[globalId].has_value() || globalId >= vel.size() || !vel[globalId].has_value())
             continue;
         count++;
 
         const auto& p = pos[globalId].value();
-        float vx = 0.f, vy = 0.f;
+        const auto& v = vel[globalId].value();
 
         size_t oldSize = payload.size();
         payload.resize(oldSize + sizeof(uint32_t) + 4*sizeof(float));
         std::memcpy(payload.data() + oldSize, &globalId, sizeof(uint32_t));
         std::memcpy(payload.data() + oldSize + 4, &p.x, sizeof(float));
         std::memcpy(payload.data() + oldSize + 8, &p.y, sizeof(float));
-        std::memcpy(payload.data() + oldSize + 12, &vx, sizeof(float));
-        std::memcpy(payload.data() + oldSize + 16, &vy, sizeof(float));
+        std::memcpy(payload.data() + oldSize + 12, &v.vx, sizeof(float));
+        std::memcpy(payload.data() + oldSize + 16, &v.vy, sizeof(float));
     }
 
     std::memcpy(payload.data(), &count, sizeof(uint16_t));

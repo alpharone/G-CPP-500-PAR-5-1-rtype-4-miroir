@@ -1,0 +1,211 @@
+Internet Engineering Task Force (IETF).                                N.Cancel
+R-Type Multiplayer Project                                         T.Pautonnier
+October 2025                                                        A.Odriosolo
+
+
+                          Network Binary Protocol
+
+
+1. Introduction
+
+This document specifies the binary protocol used for network communication
+between clients and the server in the multiplayer game R-Type. The protocol
+is language-agnostic, and all fields are transmitted in little-endian format
+with no padding. Structures are compact, and some messages may be sent
+unreliably to reduce latency.
+
+Messages are exchanged over UDP, with optional reliability mechanisms
+implemented for critical messages.
+
+
+2. Transmission unit
+
+Each message consists of a fixed header followed by a payload whose structure
+depends on the message type:
+
+   0               1               2               3               4
+   +---------------+---------------+---------------+---------------+
+   | Message Type  |       Length (2 bytes)        |   Sequence    |
+   +---------------+---------------+---------------+---------------+
+   |                      Payload (variable)                       |
+   +---------------------------------------------------------------+
+
+   o  Message Type (1 byte): Identifies the message type (see Section 4).
+   o  Length (2 bytes): Size of the Payload in bytes (excluding the header).
+   o  Sequence (4 bytes): Sequence number, used for reliable messages
+      (0 if not used).
+   o  Payload: Binary content whose structure depends on the message type.
+
+
+3. Convention
+
+   o  All integer values are transmitted in little-endian format.
+   o  No field is automatically aligned; there is no padding between fields.
+   o  Byte arrays are sent contiguously without separators.
+   o  Messages may be marked as reliable or unreliable.
+   o  ACK messages are only expected for messages with a non-zero sequence
+      number (i.e., reliable messages).
+
+
+4. Message types
+
+This section describes the binary layout of the payloads for each message type.
+
+   0x01 - NEW_CLIENT
+
+      Client -> Server  
+      > Connection request.
+      Payload: (empty)
+
+
+   0x02 - ACCEPT_CLIENT
+
+      Server -> Client  
+      > Response to NEW_CLIENT, assigns a unique identifier.
+      Payload:
+         - clientId (4 bytes)
+
+
+   0x03 - CLIENT_INPUT
+
+      Client -> Server  
+      > Sends player input events.
+      Payload:
+         - eventType (1 byte): 0x00 = RELEASE, 0x01 = PRESS
+         - keyCode (1 byte): 0x00 = UP, 0x01 = DOWN, 0x02 = LEFT, 
+                             0x03 = RIGHT, 0x04 = SHOOT, etc.
+
+
+   0x04 - SERVER_SNAPSHOT
+
+      Server -> Client  
+      > Full state of visible entities in the world.
+      Payload:
+         - entityCount (2 bytes)
+         - For each entity (repeated entityCount times):
+            - entityId (4 bytes)
+            - entityType (1 byte)
+            - positionX (2 bytes)
+            - positionY (2 bytes)
+            - velocityX (2 bytes, signed)
+            - velocityY (2 bytes, signed)
+
+
+   0x05 - ENTITY_SPAWN
+
+      Server -> Client  
+      > Spawns a new entity.
+      Payload:
+         - entityId (4 bytes)
+         - entityType (1 byte)
+         - positionX (2 bytes)
+         - positionY (2 bytes)
+
+
+   0x06 - ENTITY_DESPAWN
+
+      Server -> Client  
+      > Despawns an entity.
+      Payload:
+         - entityId (4 bytes)
+
+
+   0x07 - GAME_EVENT
+
+      Server -> Client  
+      > Sends game-related events.
+      Payload:
+         - eventType (1 byte): 0x00 = EXPLOSION, 0x01 = SCORE, 0x02 = HIT,
+            0x03 = PICKUP
+         - entityId (4 bytes)
+         - value (4 bytes)
+
+
+   0x08 - ACK
+
+      Bidirectional  
+      > Acknowledges receipt of a reliable message.
+      Payload:
+         - sequenceNumber (4 bytes)
+
+
+   0x09 - PING
+
+      Bidirectional  
+      > Ping to measure latency.
+      Payload:
+         - timestamp (8 bytes)
+
+
+   0x0A - PONG
+
+      Bidirectional  
+      > Response to PING.
+      Payload:
+         - timestamp (8 bytes)
+
+
+   0x0B - RELIABLE_FRAGMENT
+
+      Bidirectional  
+      > Part of a larger reliable message, sent in fragments.
+      Payload:
+         - parentSequence (4 bytes)
+         - fragmentId (2 bytes)
+         - fragmentCount (2 bytes)
+         - fragmentData (variable length)
+
+
+   0x0C - PLAYER_READY
+
+      Client -> Server  
+      > Indicates whether the player is ready.
+      Payload:
+         - isReady (1 byte): 0x00 = NOT_READY, 0x01 = READY
+
+
+   0x0D - GAME_START
+
+      Server -> Client  
+      > Signals the start of the game.
+      Payload:
+         - seed (4 bytes)
+
+
+   0x0E - GAME_OVER
+
+      Server -> Client  
+      > Signals the end of the game.
+      Payload:
+         - result (1 byte): 0x00 = VICTORY, 0x01 = DEFEAT, 0x02 = DRAW
+
+
+   0xFF - ADMIN_TEXT
+
+      Bidirectional  
+      > Optional text message (debug/chat).
+      Payload:
+         - UTF-8 string (until the end of the message)
+
+
+5. Synchronization and Game Loop
+
+   o  The server runs a fixed-tick game loop (e.g., 60 ticks per second).
+   o  At each tick, it sends a SERVER_SNAPSHOT with the current world state.
+   o  CLIENT_INPUT messages are sent unreliably from the client every frame.
+   o  ACK messages are used to confirm receipt of reliable messages.
+   o  GAME_EVENT messages transmit discrete gameplay events.
+
+
+6. Evolution
+
+The protocol is designed to be extensible in the following ways:
+
+   o  New message types may be added using currently unused type values.
+   o  Optional fields may be appended to existing message payloads.
+   o  Although there is no version field in the message header, clients may be
+      differentiated during the NEW_CLIENT handshake for future version
+      negotiation.
+
+All changes must ensure backward compatibility for existing message types
+used in production environments.

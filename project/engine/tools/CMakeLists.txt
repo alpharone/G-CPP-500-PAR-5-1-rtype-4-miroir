@@ -1,6 +1,5 @@
 add_library(tools
     src/Logger.cpp
-    src/ConfigManager.cpp
     src/SpriteManager.cpp
 )
 
@@ -11,7 +10,6 @@ target_link_libraries(tools PRIVATE raylib)
 if(BUILD_TESTS)
     add_executable(tools_tests
         tests/LoggerTest.cpp
-        tests/ConfigManagerTest.cpp
     )
     target_link_libraries(tools_tests PRIVATE tools Catch2::Catch2WithMain)
     catch_discover_tests(tools_tests)

@@ -6,12 +6,15 @@
 */
 
 #include "SpriteManager.hpp"
+#include "Logger.hpp"
 
-SpriteManager::~SpriteManager() {
+SpriteManager::~SpriteManager()
+{
     unloadAll();
 }
 
-Texture2D SpriteManager::load(const std::string& path) {
+Texture2D SpriteManager::load(const std::string& path)
+{
     if (path.empty())
         return Texture2D{0};
 
@@ -25,7 +28,8 @@ Texture2D SpriteManager::load(const std::string& path) {
     return _cache[path];
 }
 
-void SpriteManager::unloadAll() {
+void SpriteManager::unloadAll()
+{
     std::lock_guard<std::mutex> lock(_mtx);
 
     for (auto &kv : _cache) {
@@ -35,4 +39,19 @@ void SpriteManager::unloadAll() {
         }
     }
     _cache.clear();
+}
+
+Texture2D SpriteManager::getTexture(const std::string& name)
+{
+    if (_cache.find(name) != _cache.end())
+        return _cache[name];
+
+    if (!FileExists(name.c_str())) {
+        Logger::warn("[SpriteManager] Texture not found: " + name);
+        return Texture2D{};
+    }
+
+    Texture2D tex = LoadTexture(name.c_str());
+    _cache[name] = tex;
+    return tex;
 }

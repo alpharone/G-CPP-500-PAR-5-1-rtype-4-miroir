@@ -18,7 +18,7 @@ namespace Network {
         uint16_t length = 0;
         uint32_t seq = 0;
         uint8_t flags = 0;
-    } __attribute__((packed));
+    };
 
     #pragma pack(pop)
 

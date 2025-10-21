@@ -14,8 +14,6 @@ target_link_libraries(server_lib
 
 add_executable(r-type_server
     src/main.cpp
-    src/Server.cpp
-    src/LobbyManager.cpp
 )
 
 set_target_properties(r-type_server PROPERTIES
@@ -30,7 +28,6 @@ target_link_libraries(r-type_server
 if(BUILD_TESTS)
     add_executable(server_tests
         tests/ServerTest.cpp
-        tests/LobbyManagerTest.cpp
     )
     target_link_libraries(server_tests PRIVATE server_lib Catch2::Catch2WithMain)
     catch_discover_tests(server_tests)

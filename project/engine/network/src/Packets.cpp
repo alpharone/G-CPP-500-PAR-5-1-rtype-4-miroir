@@ -6,27 +6,46 @@
 */
 
 #include "Packets.hpp"
+#include "Utils.hpp"
 
 std::vector<uint8_t> Network::Packet::serialize() const
 {
-    std::vector<uint8_t> data(sizeof(MessageHeader) + payload.size());
-    std::memcpy(data.data(), &header, sizeof(MessageHeader));
-    if (!payload.empty()) {
-        std::memcpy(data.data() + sizeof(MessageHeader), payload.data(), payload.size());
-    }
-    return data;
+    std::vector<uint8_t> out;
+    out.reserve(8 + payload.size());
+
+    write_u8(out, header.type);
+    write_u16_le(out, static_cast<uint16_t>(payload.size()));
+    write_u32_le(out, header.seq);
+    write_u8(out, header.flags);
+
+    out.insert(out.end(), payload.begin(), payload.end());
+    return out;
 }
 
 Network::Packet Network::Packet::deserialize(const uint8_t* data, size_t len)
 {
-    if (len < sizeof(MessageHeader)) {
-        throw std::runtime_error("Invalid packet: too short");
+    const size_t HEADER_SIZE = 8;
+    if (len < HEADER_SIZE) {
+        throw std::runtime_error("deserialize: packet too small");
     }
     Packet p;
-    std::memcpy(&p.header, data, sizeof(MessageHeader));
-    if (len > sizeof(MessageHeader)) {
-        p.payload.resize(len - sizeof(MessageHeader));
-        std::memcpy(p.payload.data(), data + sizeof(MessageHeader), p.payload.size());
-    }
+    size_t offset = 0;
+
+    p.header.type = read_u8(data, len, offset);
+    offset += 1;
+
+    p.header.length = read_u16_le(data, len, offset);
+    offset += 2;
+
+    p.header.seq = read_u32_le(data, len, offset);
+    offset += 4;
+
+    p.header.flags = read_u8(data, len, offset);
+    offset += 1;
+
+    if (len - offset < p.header.length)
+        throw std::runtime_error("deserialize: invalid payload length");
+
+    p.payload.assign(data + offset, data + offset + p.header.length);
     return p;
 }

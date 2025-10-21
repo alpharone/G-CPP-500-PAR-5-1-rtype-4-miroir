@@ -5,64 +5,63 @@
 ** InputSystem.cpp
 */
 
-#include <tuple>
 #include "InputSystem.hpp"
+#include "MessageType.hpp"
 
-InputSystem::InputSystem(std::shared_ptr<NetworkContext> ctx) : _ctx(std::move(ctx))
+System::InputSystem::InputSystem(std::shared_ptr<Network::network_context_t> ctx)
+    : _ctx(std::move(ctx))
 {
+}
+
+void System::InputSystem::init(Ecs::Registry&)
+{
+    _keyMapping = {
+        {KEY_UP, 0x00},
+        {KEY_DOWN, 0x01},
+        {KEY_LEFT, 0x02},
+        {KEY_RIGHT, 0x03},
+        {KEY_SPACE, 0x04}
+    };
     Logger::info("[InputSystem] Initialized");
 }
 
-void InputSystem::update(Ecs::Registry&, float)
+void System::InputSystem::update(Ecs::Registry&, double)
 {
-    if (!_ctx || !_ctx->socket || !_ctx->socket->is_open())
-        return;
-
-    float dx = 0.f;
-    float dy = 0.f;
-
-    if (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP))
-        dy -= 1.f;
-    if (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN))
-        dy += 1.f;
-    if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT))
-        dx -= 1.f;
-    if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT))
-        dx += 1.f;
-
-    if (dx == 0.f && dy == 0.f)
-        return;
-
-    float len = std::sqrt(dx*dx + dy*dy);
-    if (len > 0.f) {
-        dx /= len;
-        dy /= len;
-    }
-
-    Network::Packet pkt;
-    pkt.header.type = Network::PLAYER_INPUT;
-    pkt.payload.resize(2 * sizeof(float));
-    std::memcpy(pkt.payload.data(), &dx, sizeof(float));
-    std::memcpy(pkt.payload.data()+sizeof(float), &dy, sizeof(float));
-
-    try {
-        _ctx->socket->send_to(asio::buffer(pkt.serialize()), _ctx->serverEndpoint);
-    } catch (const std::exception& e) {
-        Logger::warn(std::string("[InputSystem] send failed: ") + e.what());
+    for (auto &[rayKey, code] : _keyMapping) {
+        if (IsKeyPressed(KEY_ESCAPE)) {
+            _ctx->quitRequested = true;
+        }
+        if (IsKeyPressed(rayKey) || IsKeyReleased(rayKey)) {
+            Network::Packet pkt;
+            pkt.header.type = Network::CLIENT_INPUT;
+            pkt.header.seq = 0;
+            pkt.payload.push_back(IsKeyPressed(rayKey) ? Network::PRESS : Network::RELEASE);
+            pkt.payload.push_back(code);
+            if (_ctx->adapter) {
+                Network::endpoint_t serverEp;
+                serverEp.address = _ctx->serverEndpoint.address().to_string();
+                serverEp.port = _ctx->serverEndpoint.port();
+                _ctx->adapter->sendReliable(serverEp, pkt);
+            }
+        }
     }
 }
 
-extern "C" std::shared_ptr<ISystem> createInputSystem(std::any params)
+void System::InputSystem::shutdown()
 {
-    std::shared_ptr<NetworkContext> ctx;
+    Logger::info("[InputSystem] Shutdown");
+}
 
-    if (params.has_value()) {
-        try {
-            ctx = std::any_cast<std::shared_ptr<NetworkContext>>(params);
+extern "C" std::shared_ptr<System::ISystem> createInputSystem(std::any params)
+{
+    std::shared_ptr<Network::network_context_t> ctx;
+    try {
+        if (params.has_value()) {
+            ctx = std::any_cast<std::shared_ptr<Network::network_context_t>>(params);
         }
-        catch (const std::exception& e) {
-            Logger::warn(std::string("[InputFactory] bad any_cast: ") + e.what());
-        }
+        return std::make_shared<System::InputSystem>(ctx);
+    } catch (const std::exception& e) {
+        Logger::error(std::string("[Factory]: Failed to create InputSystem: ") + e.what());
     }
-    return std::make_shared<InputSystem>(ctx);
+    return nullptr;
 }

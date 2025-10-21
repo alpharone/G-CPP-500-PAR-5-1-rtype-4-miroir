@@ -30,24 +30,29 @@ namespace Ecs {
             SparseArray<Component>& registerComponent()
             {
                 std::type_index key(typeid(Component));
-                if (_components.find(key) == _components.end()) {
-                    _components.emplace(key, SparseArray<Component>{});
-                    _erase_callbacks.push_back([](Registry& r, Entity const& e){
+
+                auto [it, inserted] = _components.try_emplace(key, std::make_any<SparseArray<Component>>());
+                if (inserted) {
+                    _erase_callbacks.push_back([](Registry& r, Entity const& e) {
                         r.removeComponent<Component>(e);
                     });
                 }
-                return std::any_cast<SparseArray<Component>&>(_components.at(key));
+                return std::any_cast<SparseArray<Component>&>(it->second);
             }
         
             template <typename Component>
             SparseArray<Component>& getComponents()
             {
                 std::type_index key(typeid(Component));
-                if (_components.find(key) == _components.end())
+
+                auto it = _components.find(key);
+                if (it == _components.end())
                     return registerComponent<Component>();
-                return std::any_cast<SparseArray<Component>&>(_components.at(key));
+                return std::any_cast<SparseArray<Component>&>(it->second);
+
             }
         
+
             template <typename Component>
             SparseArray<Component> const& getComponents() const
             {

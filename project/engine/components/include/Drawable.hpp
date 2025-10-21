@@ -10,20 +10,20 @@
 #include <cstdint>
 #include <string>
 #include <raylib.h>
+#include <unordered_map>
 
 namespace Component {
 
     struct drawable_t {
-        std::string texturePath;
-        Color color = WHITE;
-        bool isPlayer = false;
-        int z = 0;
-        Texture2D texture{ 0 };
-        bool loaded = false;
+        std::string renderType = "sprite";
+        uint32_t resourceId = 0;
+        int layer = 0;
+        float scaleX = 1.0f;
+        float scaleY = 1.0f;
+        std::unordered_map<std::string, std::string> meta;
         
-        drawable_t() = default;
-        drawable_t(std::string _texturePath, Color _color, bool _isPlayer, int _z, Texture2D _texture, bool _loaded) noexcept :
-        texturePath(_texturePath), color(_color), isPlayer(_isPlayer), z(_z), texture(_texture), loaded(_loaded) {}
+        drawable_t(const std::string& type, uint32_t id = 0, int l = 0, float sx = 1.0f, float sy = 1.0f)
+        : renderType(type), resourceId(id), layer(l), scaleX(sx), scaleY(sy) {}
     };
 
 }

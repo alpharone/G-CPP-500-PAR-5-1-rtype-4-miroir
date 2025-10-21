@@ -1,11 +1,20 @@
-add_library(network
+add_library(network STATIC
     src/Packets.cpp
+    src/ReliableChannel.cpp
+    src/Utils.cpp
+    src/RoomManager.cpp
+    src/AsioNetworkTransport.cpp
+    src/ReliableLayerAdapter.cpp
+    src/NetworkContext.cpp
+    src/DefaultMessageSerializer.cpp
+    src/SnapshotInterpolator.cpp
 )
 
 target_include_directories(network PUBLIC include ${asio_SOURCE_DIR}/asio/include)
 target_link_libraries(network 
     PRIVATE
         ecs
+        tools
 )
 
 if(BUILD_TESTS)

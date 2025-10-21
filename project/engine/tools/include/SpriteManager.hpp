@@ -15,9 +15,9 @@ class SpriteManager {
     public:
         SpriteManager() = default;
         ~SpriteManager();
-
         Texture2D load(const std::string& path);
         void unloadAll();
+        Texture2D getTexture(const std::string& name);
 
     private:
         std::unordered_map<std::string, Texture2D> _cache;

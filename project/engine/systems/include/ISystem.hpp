@@ -9,8 +9,14 @@
 
 #include "Registry.hpp"
 
-class ISystem {
-    public:
-        virtual ~ISystem() = default;
-        virtual void update(Ecs::Registry& r, float dt) = 0;
-};
+namespace System {
+
+    class ISystem {
+        public:
+            virtual ~ISystem() = default;
+            virtual void init(Ecs::Registry& registry) = 0;
+            virtual void update(Ecs::Registry& registry, double dt) = 0;
+            virtual void shutdown() = 0;
+    };
+
+}

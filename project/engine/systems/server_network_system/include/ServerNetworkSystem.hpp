@@ -7,37 +7,43 @@
 
 #pragma once
 
-#include <asio.hpp>
-#include <unordered_map>
-#include <string>
-#include <chrono>
-#include "Packets.hpp"
-#include "ReliableChannel.hpp"
-#include "GameInstance.hpp"
 #include "ISystem.hpp"
+#include "ReliableLayerAdapter.hpp"
+#include "RoomManager.hpp"
 #include "Logger.hpp"
-#include "Room.hpp"
+#include <unordered_map>
+#include <unordered_set>
+#include <mutex>
 
-using asio::ip::udp;
+namespace System {
 
-class ServerNetworkSystem : public ISystem {
-    public:
-        explicit ServerNetworkSystem(unsigned short port);
-        void update(Ecs::Registry& registry, float dt) override;
+    class ServerNetworkSystem : public ISystem {
+        public:
+            ServerNetworkSystem(unsigned short port);
+            ~ServerNetworkSystem() override = default;
 
-    private:
-        void startReceive();
-        void onReceive(const udp::endpoint& from, const uint8_t* data, size_t len);
-        void spawnPlayer(Room& room, uint32_t localId, const udp::endpoint& endpoint, Ecs::Registry& registry);
-        void applyInputs(Room& room, float dt, Ecs::Registry& registry);
-        void sendSnapshotToRoom(Room& room, Ecs::Registry& registry);
-        void broadcastDespawn(Room& room, uint32_t globalId);
+            void init(Ecs::Registry& registry) override;
+            void update(Ecs::Registry& registry, double dt) override;
+            void shutdown() override;
 
-        asio::io_context _io;
-        udp::socket _socket;
-        udp::endpoint _remoteEndpoint;
-        std::array<uint8_t, 1500> _buffer{};
+        private:
+            void onAppPacket(const Network::Packet& pkt, const Network::endpoint_t& from);
+            void handleNewClient(const Network::Packet& pkt, const Network::endpoint_t& from);
+            void handleDisconnect(const Network::Packet& pkt, const Network::endpoint_t& from);
 
-        std::vector<std::unique_ptr<Room>> _rooms;
-        std::mutex _inputMutex;
-};
+            using HandlerFn = std::function<void(const Network::Packet&, const Network::endpoint_t&)>;
+            std::unordered_map<uint16_t, HandlerFn> _handlers;
+
+            std::shared_ptr<Network::INetworkTransport> _transport;
+            std::shared_ptr<Network::IMessageSerializer> _serializer;
+            std::unique_ptr<Network::ReliableLayerAdapter> _adapter;
+            std::unique_ptr<Network::RoomManager> _rooms;
+
+            std::unordered_map<std::string, std::pair<uint32_t,uint32_t>> _knownClients;
+            std::mutex _clientsMtx;
+
+            uint32_t _mainRoomId = 0;
+            unsigned short _port;
+    };
+
+}

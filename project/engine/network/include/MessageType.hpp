@@ -34,7 +34,8 @@ namespace Network {
         UP = 1,
         DOWN,
         LEFT,
-        RIGHT
+        RIGHT,
+        SPACE
     };
 
     enum ButtonState : uint8_t {

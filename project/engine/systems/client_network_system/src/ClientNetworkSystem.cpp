@@ -14,7 +14,7 @@
 #include "Position.hpp"
 
 System::ClientNetworkSystem::ClientNetworkSystem(const std::string& host, unsigned short port, std::shared_ptr<Network::network_context_t> ctx)
-    : _ctx(std::move(ctx))
+    : _ctx(std::move(ctx)), _lastPacketTime(std::chrono::steady_clock::now())
 {
     _server = {host, port};
 
@@ -46,6 +46,10 @@ void System::ClientNetworkSystem::init(Ecs::Registry& registry)
 
     _handlers[Network::ENTITY_SPAWN] = [this](const Network::Packet& pkt, const Network::endpoint_t& from) {
         handleEntitySpawn(pkt, from);
+    };
+
+    _handlers[Network::ENTITY_DESPAWN] = [this](const Network::Packet& pkt, const Network::endpoint_t& from) {
+        handleEntityDespawn(pkt, from);
     };
 
     _handlers[Network::GAME_START] = [this](const Network::Packet& pkt, const Network::endpoint_t& from) {
@@ -82,7 +86,22 @@ void System::ClientNetworkSystem::update(Ecs::Registry& registry, double dt)
 
     Network::Packet pkt;
     while (_ctx->popPacket(pkt)) {
+        _lastPacketTime = std::chrono::steady_clock::now();
+        _reconnecting = false;
         onAppPacket(pkt, _server);
+    }
+
+    auto now = std::chrono::steady_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - _lastPacketTime).count();
+    if (elapsed > 5 && !_reconnecting) {
+        _reconnecting = true;
+        Logger::warn("[Client] No packets received for 5s, attempting reconnection...");
+        _ctx->connected = false;
+        _entityMap.clear();
+        _interpolator = Network::SnapshotInterpolator();
+        if (_transport)
+            _transport->stop();
+        init(registry);
     }
 
     double renderTime = std::chrono::duration<double>(
@@ -92,11 +111,15 @@ void System::ClientNetworkSystem::update(Ecs::Registry& registry, double dt)
     auto states = _interpolator.interpolate(renderTime);
 
     for (auto& state : states) {
-        auto &pos = registry.getComponents<Component::position_t>();
-        if (!pos[state.entityId].has_value())
+        auto it = _entityMap.find(state.entityId);
+        if (it == _entityMap.end())
             continue;
-        pos[state.entityId]->x = state.x;
-        pos[state.entityId]->y = state.y;
+        size_t entityId = it->second;
+        auto &pos = registry.getComponents<Component::position_t>();
+        if (!pos[entityId].has_value())
+            continue;
+        pos[entityId]->x = state.x;
+        pos[entityId]->y = state.y;
     }
 }
 
@@ -146,6 +169,12 @@ void System::ClientNetworkSystem::handleAcceptClient(const Network::Packet& pkt,
         _ctx->clientId = Network::read_u32_le(pkt.payload.data(), pkt.payload.size(), 4);
         Logger::info("[Client] Accepted in room #" + std::to_string(_ctx->roomId) +
                      " with ID=" + std::to_string(_ctx->clientId));
+
+        if (_entityMap.count(0)) {
+            _entityMap[_ctx->clientId] = _entityMap[0];
+            _entityMap.erase(0);
+            Logger::info("[Client] Remapped entity from temp id 0 to clientId " + std::to_string(_ctx->clientId));
+        }
     } else {
         Logger::warn("[Client] Invalid ACCEPT_CLIENT payload");
     }
@@ -153,21 +182,45 @@ void System::ClientNetworkSystem::handleAcceptClient(const Network::Packet& pkt,
 
 void System::ClientNetworkSystem::handleEntitySpawn(const Network::Packet& pkt, const Network::endpoint_t&)
 {
-    if (pkt.payload.size() < 8) {
+    if (pkt.payload.size() < 12) {
         Logger::warn("[Client] Bad ENTITY_SPAWN payload size=" + std::to_string(pkt.payload.size()));
         return;
     }
 
-    uint32_t x = Network::read_u32_le(pkt.payload.data(), pkt.payload.size(), 0);
-    uint32_t y = Network::read_u32_le(pkt.payload.data(), pkt.payload.size(), 4);
-    std::string spriteName(pkt.payload.begin() + 8, pkt.payload.end());
+    uint32_t clientId = Network::read_u32_le(pkt.payload.data(), pkt.payload.size(), 0);
+    uint32_t x = Network::read_u32_le(pkt.payload.data(), pkt.payload.size(), 4);
+    uint32_t y = Network::read_u32_le(pkt.payload.data(), pkt.payload.size(), 8);
+    std::string spriteName(pkt.payload.begin() + 12, pkt.payload.end());
 
     auto& registry = *_ctx->registry;
     auto e = registry.spawnEntity();
     registry.emplaceComponent<Component::position_t>(e, Component::position_t{static_cast<float>(x), static_cast<float>(y)});
     registry.emplaceComponent<Component::drawable_t>(e, Component::drawable_t(spriteName));
 
-    Logger::info("[Client] Spawned entity at (" + std::to_string(x) + ", " + std::to_string(y) + ") sprite=" + spriteName);
+    _entityMap[clientId] = e;
+
+    Logger::info("[Client] Spawned entity for clientId=" + std::to_string(clientId) + " at (" + std::to_string(x) + ", " + std::to_string(y) + ") sprite=" + spriteName);
+}
+
+void System::ClientNetworkSystem::handleEntityDespawn(const Network::Packet& pkt, const Network::endpoint_t&)
+{
+    if (pkt.payload.size() < 4) {
+        Logger::warn("[Client] Bad ENTITY_DESPAWN payload size=" + std::to_string(pkt.payload.size()));
+        return;
+    }
+
+    uint32_t clientId = Network::read_u32_le(pkt.payload.data(), pkt.payload.size(), 0);
+
+    auto it = _entityMap.find(clientId);
+    if (it != _entityMap.end()) {
+        size_t entityId = it->second;
+        auto& registry = *_ctx->registry;
+        registry.killEntity(Ecs::Entity(entityId));
+        _entityMap.erase(clientId);
+        Logger::info("[Client] Despawned entity for clientId=" + std::to_string(clientId));
+    } else {
+        Logger::warn("[Client] No entity found for despawn clientId=" + std::to_string(clientId));
+    }
 }
 
 void System::ClientNetworkSystem::handleGameStart(const Network::Packet& pkt, const Network::endpoint_t&)
@@ -201,12 +254,22 @@ void System::ClientNetworkSystem::handleServerSnapshot(const Network::Packet& pk
         std::memcpy(&x, &xInt, sizeof(float));
         std::memcpy(&y, &yInt, sizeof(float));
 
+        snap.entities.push_back(Network::snapshot_entity_state_t{id, x, y});
+
         if (_ctx->registry) {
-            auto& reg = *_ctx->registry;
-            auto& pos = reg.getComponents<Component::position_t>();
-            if (pos[id].has_value()) {
-                pos[id]->x = x;
-                pos[id]->y = y;
+            auto it = _entityMap.find(id);
+            if (it != _entityMap.end()) {
+                size_t entityId = it->second;
+                auto& reg = *_ctx->registry;
+                auto& pos = reg.getComponents<Component::position_t>();
+                if (pos[entityId].has_value()) {
+                    pos[entityId]->x = x;
+                    pos[entityId]->y = y;
+                } else {
+                    Logger::warn("[Client] Position component not found for entity " + std::to_string(entityId));
+                }
+            } else {
+                Logger::warn("[Client] No entity mapped for id " + std::to_string(id));
             }
         }
     }

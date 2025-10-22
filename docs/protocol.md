@@ -22,21 +22,22 @@ Tous les messages commencent par un en-tête commun :
 
 | Code | Name               | Reliable | Dir | Purpose                                  |
 | ---- | ------------------ | -------- | --- | ---------------------------------------- |
-| 0x01 | NEW_CLIENT         | yes      | C→S | Client demande à rejoindre               |
-| 0x02 | ACCEPT_CLIENT      | yes      | S→C | Serveur accepte, donne un `clientId`     |
-| 0x03 | CLIENT_INPUT       | no       | C→S | Entrées du joueur (move/shoot)           |
-| 0x04 | SERVER_SNAPSHOT    | no       | S→C | État complet du monde (entités visibles) |
-| 0x05 | ENTITY_SPAWN       | yes      | S→C | Création d’une entité                    |
-| 0x06 | ENTITY_DESPAWN     | yes      | S→C | Suppression d’une entité                 |
-| 0x07 | GAME_EVENT         | yes      | S→C | Score, explosion, hit, pickup            |
-| 0x08 | ACK                | no       | ↔   | Ack pour messages fiables                |
-| 0x09 | PING               | no       | ↔   | Test de latence                          |
-| 0x0A | PONG               | no       | ↔   | Réponse latence                          |
-| 0x0B | RELIABLE_FRAGMENT  | yes      | ↔   | Fragmentation de gros messages           |
-| 0x0C | PLAYER_READY       | yes      | C→S | Joueur prêt / non-prêt dans le lobby     |
-| 0x0D | GAME_START         | yes      | S→C | Début de la partie                       |
-| 0x0E | GAME_OVER          | yes      | S→C | Fin de partie, résultat                  |
-| 0xFF | ADMIN_TEXT         | opt      | ↔   | Debug / Chat texte                       |
+|  1   | NEW_CLIENT         | yes      | C→S | Client demande à rejoindre               |
+|  2   | ACCEPT_CLIENT      | yes      | S→C | Serveur accepte, donne un `clientId`     |
+|  3   | CLIENT_INPUT       | no       | C→S | Entrées du joueur (move/shoot)           |
+|  4   | SERVER_SNAPSHOT    | no       | S→C | État complet du monde (entités visibles) |
+|  5   | ENTITY_SPAWN       | yes      | S→C | Création d’une entité                    |
+|  6   | ENTITY_DESPAWN     | yes      | S→C | Suppression d’une entité                 |
+|  7   | GAME_EVENT         | yes      | S→C | Score, explosion, hit, pickup            |
+|  8   | ACK                | no       | ↔   | Ack pour messages fiables                |
+|  9   | PING               | no       | ↔   | Test de latence                          |
+|  10  | PONG               | no       | ↔   | Réponse latence                          |
+|  11  | RELIABLE_FRAGMENT  | yes      | ↔   | Fragmentation de gros messages           |
+|  12  | PLAYER_READY       | yes      | C→S | Joueur prêt / non-prêt dans le lobby     |
+|  13  | GAME_START         | yes      | S→C | Début de la partie                       |
+|  14  | GAME_OVER          | yes      | S→C | Fin de partie, résultat                  |
+|  15  | ADMIN_TEXT         | opt      | ↔   | Debug / Chat texte                       |
+|  16  | PLAYER_INPUT       | opt      | ↔   | Input du player                          |
 
 ---
 

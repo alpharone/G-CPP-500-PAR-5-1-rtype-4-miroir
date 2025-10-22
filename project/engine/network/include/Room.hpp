@@ -9,6 +9,7 @@
 
 #include <asio.hpp>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include <string>
 #include <chrono>
@@ -37,6 +38,9 @@ namespace Network {
         std::chrono::steady_clock::time_point lastSeen;
         float posX{100};
         float posY{100};
+        float lastSnapX{100};
+        float lastSnapY{100};
+        std::unordered_set<uint8_t> pressedKeys;
     };
 
     struct pending_input_t {

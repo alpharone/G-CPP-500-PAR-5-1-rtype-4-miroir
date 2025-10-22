@@ -5,8 +5,8 @@
 ** RenderSystem.cpp
 */
 
-#include "RenderSystem.hpp"
 #include <filesystem>
+#include "RenderSystem.hpp"
 
 System::RenderSystem::RenderSystem(int width, int height, const std::string& title, std::shared_ptr<Network::network_context_t> ctx)
     : _width(width), _height(height), _title(title), _ctx(std::move(ctx)), _initialized(false)
@@ -61,6 +61,8 @@ void System::RenderSystem::update(Ecs::Registry& registry, double)
             } else {
                 DrawTexture(texture, (int)pos.x, (int)pos.y, WHITE);
             }
+        } else {
+            Logger::warn("[Render] Texture not loaded for " + drawable.renderType);
         }
     }
 

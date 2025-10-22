@@ -19,6 +19,7 @@ namespace Network {
         uint32_t entityId;
         float x;
         float y;
+        snapshot_entity_state_t(uint32_t id = 0, float px = 0, float py = 0) : entityId(id), x(px), y(py) {}
     };
 
     struct snapshot_t {

@@ -16,11 +16,11 @@ System::InputSystem::InputSystem(std::shared_ptr<Network::network_context_t> ctx
 void System::InputSystem::init(Ecs::Registry&)
 {
     _keyMapping = {
-        {KEY_UP, 0x00},
-        {KEY_DOWN, 0x01},
-        {KEY_LEFT, 0x02},
-        {KEY_RIGHT, 0x03},
-        {KEY_SPACE, 0x04}
+        {KEY_UP, Network::UP},
+        {KEY_DOWN, Network::DOWN},
+        {KEY_LEFT, Network::LEFT},
+        {KEY_RIGHT, Network::RIGHT},
+        {KEY_SPACE, Network::SPACE}
     };
     Logger::info("[InputSystem] Initialized");
 }

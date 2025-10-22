@@ -32,6 +32,7 @@ namespace System {
             void onAppPacket(const Network::Packet& pkt, const Network::endpoint_t& from);
             void handleAcceptClient(const Network::Packet& pkt, const Network::endpoint_t& from);
             void handleEntitySpawn(const Network::Packet& pkt, const Network::endpoint_t& from);
+            void handleEntityDespawn(const Network::Packet& pkt, const Network::endpoint_t& from);
             void handleGameStart(const Network::Packet& pkt, const Network::endpoint_t& from);
             void handleServerSnapshot(const Network::Packet& pkt, const Network::endpoint_t&);
 
@@ -45,6 +46,11 @@ namespace System {
             Network::endpoint_t _server;
             Network::SnapshotInterpolator _interpolator;
             std::chrono::steady_clock::time_point _startTime = std::chrono::steady_clock::now();
+
+            std::unordered_map<uint32_t, size_t> _entityMap;
+
+            std::chrono::steady_clock::time_point _lastPacketTime;
+            bool _reconnecting{false};
 
             std::atomic<bool> _initialized{false};
             std::mutex _mutex;

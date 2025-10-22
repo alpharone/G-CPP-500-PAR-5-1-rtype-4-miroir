@@ -29,7 +29,13 @@ void System::ServerNetworkSystem::init(Ecs::Registry&)
     };
 
     _handlers[Network::CLIENT_INPUT] = [this](const Network::Packet& pkt, const Network::endpoint_t& from) {
-        _rooms->onPacket(_mainRoomId, from, pkt);
+        std::string key = from.address + ":" + std::to_string(from.port);
+        std::lock_guard<std::mutex> lk(_clientsMtx);
+        auto it = _knownClients.find(key);
+        if (it != _knownClients.end()) {
+            uint32_t roomId = it->second.first;
+            _rooms->onPacket(roomId, from, pkt);
+        }
     };
 
     _handlers[Network::ENTITY_DESPAWN] = [this](const Network::Packet& pkt, const Network::endpoint_t& from) {
@@ -85,7 +91,7 @@ void System::ServerNetworkSystem::handleNewClient(const Network::Packet&, const 
 
     {
         std::lock_guard<std::mutex> lk(_clientsMtx);
-        if (_knownClients.contains(key)) {
+        if (_knownClients.find(key) != _knownClients.end()) {
             Logger::info("[Server] Ignoring duplicate NEW_CLIENT from " + key);
             return;
         }
@@ -108,16 +114,43 @@ void System::ServerNetworkSystem::handleNewClient(const Network::Packet&, const 
     Logger::info("[Server] Client joined room #" + std::to_string(roomId) +
                  " with ID=" + std::to_string(clientId));
 
-    Network::Packet spawn;
-    spawn.header.type = Network::ENTITY_SPAWN;
-    uint32_t x = 100, y = 200;
+    auto& room = _rooms->getRoom(roomId);
+    std::lock_guard<std::mutex> rlk(room.mtx);
+
+    for (auto& [existingId, existingClient] : room.clients) {
+        if (existingId == clientId)
+            continue;
+        Network::Packet spawnExisting;
+        spawnExisting.header.type = Network::ENTITY_SPAWN;
+        Network::write_u32_le(spawnExisting.payload, existingId);
+        Network::write_u32_le(spawnExisting.payload, static_cast<uint32_t>(existingClient.posX));
+        Network::write_u32_le(spawnExisting.payload, static_cast<uint32_t>(existingClient.posY));
+        std::string sprite = "assets/sprites/r-typesheet42.gif";
+        spawnExisting.payload.insert(spawnExisting.payload.end(), sprite.begin(), sprite.end());
+        spawnExisting.header.length = static_cast<uint16_t>(spawnExisting.payload.size());
+        _adapter->sendReliable(from, spawnExisting);
+        Logger::info("[Server] Sent ENTITY_SPAWN for client " + std::to_string(existingId) + " to new client " + std::to_string(clientId));
+    }
+
+    Network::Packet spawnNew;
+    spawnNew.header.type = Network::ENTITY_SPAWN;
+    Network::write_u32_le(spawnNew.payload, clientId);
+    uint32_t x = 100;
+    uint32_t y = 200;
     std::string sprite = "assets/sprites/r-typesheet42.gif";
-    Network::write_u32_le(spawn.payload, x);
-    Network::write_u32_le(spawn.payload, y);
-    spawn.payload.insert(spawn.payload.end(), sprite.begin(), sprite.end());
-    spawn.header.length = static_cast<uint16_t>(spawn.payload.size());
-    _adapter->sendReliable(from, spawn);
-    Logger::info("[Server] Sent ENTITY_SPAWN to " + key);
+    Network::write_u32_le(spawnNew.payload, x);
+    Network::write_u32_le(spawnNew.payload, y);
+    spawnNew.payload.insert(spawnNew.payload.end(), sprite.begin(), sprite.end());
+    spawnNew.header.length = static_cast<uint16_t>(spawnNew.payload.size());
+    for (auto& [existingId, existingClient] : room.clients) {
+        if (existingId == clientId)
+            continue;
+        _adapter->sendReliable(existingClient.endpoint, spawnNew);
+        Logger::info("[Server] Sent ENTITY_SPAWN for new client " + std::to_string(clientId) + " to existing client " + std::to_string(existingId));
+    }
+
+    _adapter->sendReliable(from, spawnNew);
+    Logger::info("[Server] Sent ENTITY_SPAWN to new client " + key);
 }
 
 void System::ServerNetworkSystem::handleDisconnect(const Network::Packet& pkt, const Network::endpoint_t& from)

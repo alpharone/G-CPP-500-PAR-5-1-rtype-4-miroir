@@ -65,6 +65,7 @@ namespace Network {
         Network::Packet accept;
         accept.header.type = Network::ACCEPT_CLIENT;
         std::vector<uint8_t> pay;
+        Network::write_u32_le(pay, newRoomId);
         Network::write_u32_le(pay, cid);
         accept.payload = std::move(pay);
         accept.header.length = static_cast<uint16_t>(accept.payload.size());
@@ -151,14 +152,20 @@ namespace Network {
             return;
 
         uint32_t clientId = itc->first;
-        room.clients[clientId].lastSeen = std::chrono::steady_clock::now();
+        auto& client = itc->second;
+        client.lastSeen = std::chrono::steady_clock::now();
 
         switch (p.header.type) {
             case Network::CLIENT_INPUT: {
-                pending_input_t pi;
-                pi.clientId = clientId;
-                pi.payload = p.payload;
-                room.pendingInputs.push_back(std::move(pi));
+                if (p.payload.size() >= 2) {
+                    uint8_t pressed = p.payload[0];
+                    uint8_t code = p.payload[1];
+                    if (pressed == Network::PRESS) {
+                        client.pressedKeys.insert(code);
+                    } else if (pressed == Network::RELEASE) {
+                        client.pressedKeys.erase(code);
+                    }
+                }
                 break;
             }
 
@@ -178,35 +185,24 @@ namespace Network {
         for (auto &[id, room] : _rooms) {
             std::lock_guard<std::mutex> rlk(room.mtx);
 
-            for (auto &input : room.pendingInputs) {
-                auto itClient = room.clients.find(input.clientId);
-                if (itClient == room.clients.end())
-                    continue;
-
-                auto &client = itClient->second;
-
-                if (input.payload.size() >= 2) {
-                    uint8_t pressed = input.payload[0];
-                    uint8_t code = input.payload[1];
-                
-                    float speed = 200.0f * dt;
-                    if (pressed) {
-                        switch (code) {
-                            case Network::UP:
-                                client.posY -= speed;
-                                break; 
-                            case Network::DOWN:
-                                client.posY += speed;
-                                break; 
-                            case Network::LEFT:
-                                client.posX -= speed;
-                                break;
-                            case Network::RIGHT:
-                                client.posX += speed;
-                                break;
-                            default:
-                                break;
-                        }
+            for (auto &[cid, client] : room.clients) {
+                float speed = 200.0f * dt;
+                for (uint8_t code : client.pressedKeys) {
+                    switch (code) {
+                        case Network::UP:
+                            client.posY -= speed;
+                            break;
+                        case Network::DOWN:
+                            client.posY += speed;
+                            break;
+                        case Network::LEFT:
+                            client.posX -= speed;
+                            break;
+                        case Network::RIGHT:
+                            client.posX += speed;
+                            break;
+                        default:
+                            break;
                     }
                 }
             }
@@ -230,14 +226,21 @@ namespace Network {
 
                 Network::Packet snap;
                 snap.header.type = Network::SERVER_SNAPSHOT;
+                bool hasChanges = false;
 
                 for (auto &[cid, client] : room.clients) {
+                    if (client.posX != client.lastSnapX || client.posY != client.lastSnapY) {
+                        hasChanges = true;
+                        client.lastSnapX = client.posX;
+                        client.lastSnapY = client.posY;
+                    }
+
                     Network::write_u32_le(snap.payload, cid);
-                
+
                     uint32_t xInt;
                     std::memcpy(&xInt, &client.posX, sizeof(float));
                     Network::write_u32_le(snap.payload, xInt);
-                
+
                     uint32_t yInt;
                     std::memcpy(&yInt, &client.posY, sizeof(float));
                     Network::write_u32_le(snap.payload, yInt);

@@ -5,110 +5,98 @@
 ** RenderSystem.cpp
 */
 
-#include <tuple>
-#include <thread>
+#include <filesystem>
 #include "RenderSystem.hpp"
-#include "Logger.hpp"
-#include "Drawable.hpp"
 
-RenderSystem::RenderSystem(int w, int h, const std::string& title, std::shared_ptr<NetworkContext> ctx) : _w(w), _h(h), _title(title), _ctx(std::move(ctx))
+System::RenderSystem::RenderSystem(int width, int height, const std::string& title, std::shared_ptr<Network::network_context_t> ctx)
+    : _width(width), _height(height), _title(title), _ctx(std::move(ctx)), _initialized(false)
+{}
+
+System::RenderSystem::~RenderSystem()
 {
-    if (_title.empty())
-        _title = "R-Type Client";
-
-    InitWindow(_w, _h, _title.c_str());
-    SetTargetFPS(60);
-    Logger::info("[Render] Window initialized: " + _title);
-}
-
-RenderSystem::~RenderSystem()
-{
-    if (IsWindowReady()) {
-        _sprites.unloadAll();
+    if (_initialized)
         CloseWindow();
-    }
 }
 
-void RenderSystem::update(Ecs::Registry& registry, float)
+void System::RenderSystem::init(Ecs::Registry&)
 {
+    InitWindow(_width, _height, _title.c_str());
+    SetTargetFPS(60);
+    _spriteManager = std::make_unique<SpriteManager>();
+    _initialized = true;
+    Logger::info("[RenderSystem] Initialized (" + std::to_string(_width) + "x" + std::to_string(_height) + ")");
+}
 
-    if (!IsWindowReady())
+void System::RenderSystem::update(Ecs::Registry& registry, double)
+{
+    if (!_initialized)
         return;
-
-    PollInputEvents();
     BeginDrawing();
     ClearBackground(BLACK);
 
-    auto& positions = registry.getComponents<Component::position_t>();
-    auto& drawables = registry.getComponents<Component::drawable_t>();
-    size_t count = std::min(positions.size(), drawables.size());
+    auto &positions = registry.getComponents<Component::position_t>();
+    auto &drawables = registry.getComponents<Component::drawable_t>();
 
-    struct DrawEntry {
-        size_t id;
-        Component::position_t pos;
-        Component::drawable_t draw;
-    };
+    for (size_t i = 0; i < positions.size() && i < drawables.size(); i++) {
+        if (!positions[i].has_value() || !drawables[i].has_value())
+            continue;
+        const auto &pos = positions[i].value();
+        const auto &drawable = drawables[i].value();
+        Texture2D texture = _spriteManager->getTexture(drawable.renderType);
+        if (texture.id != 0) {
+            auto itx = drawable.meta.find("frame_x");
+            auto ity = drawable.meta.find("frame_y");
+            auto itw = drawable.meta.find("frame_w");
+            auto ith = drawable.meta.find("frame_h");
 
-    std::vector<DrawEntry> entries;
-    entries.reserve(count);
-
-    for (size_t i = 0; i < count; ++i) {
-        if (positions[i].has_value() && drawables[i].has_value()) {
-            entries.push_back({i, positions[i].value(), drawables[i].value()});
-        }
-    }
-
-    std::stable_sort(entries.begin(), entries.end(),
-                     [](const DrawEntry& a, const DrawEntry& b) {
-                         return a.draw.z < b.draw.z;
-                     });
-
-    for (auto& e : entries) {
-        const auto& p = e.pos;
-        const auto& d = e.draw;
-
-        Color tint = d.color;
-        bool isLocal = (_ctx && _ctx->playerId == static_cast<uint32_t>(e.id));
-
-        if (!d.texturePath.empty()) {
-            Texture2D tex = _sprites.load(d.texturePath);
-            if (tex.id != 0) {
-                float x = p.x - tex.width / 2.0f;
-                float y = p.y - tex.height / 2.0f;
-                DrawTexture(tex, static_cast<int>(x), static_cast<int>(y), tint);
-
-                if (isLocal)
-                    DrawRectangleLines(static_cast<int>(x) - 2, static_cast<int>(y) - 2,
-                                       tex.width + 4, tex.height + 4, WHITE);
-                continue;
+            if (itx != drawable.meta.end() && ity != drawable.meta.end()
+                && itw != drawable.meta.end() && ith != drawable.meta.end()) {
+                int fx = std::stoi(itx->second);
+                int fy = std::stoi(ity->second);
+                int fw = std::stoi(itw->second);
+                int fh = std::stoi(ith->second);
+                Rectangle src = {(float)fx, (float)fy, (float)fw, (float)fh};
+                Vector2 dst = {(float)pos.x, (float)pos.y};
+                DrawTextureRec(texture, src, dst, WHITE);
+            } else {
+                DrawTexture(texture, (int)pos.x, (int)pos.y, WHITE);
             }
+        } else {
+            Logger::warn("[Render] Texture not loaded for " + drawable.renderType);
         }
-
-        DrawCircle(static_cast<int>(p.x), static_cast<int>(p.y), 12.f, tint);
-        if (isLocal)
-            DrawCircleLines(static_cast<int>(p.x), static_cast<int>(p.y), 15.f, WHITE);
     }
 
     EndDrawing();
 }
 
-extern "C" std::shared_ptr<ISystem> createRenderSystem(std::any params)
+
+void System::RenderSystem::shutdown()
 {
-    int w = 800, h = 600;
-    std::string title = "R-Type Client";
-    std::shared_ptr<NetworkContext> ctx;
-
-    if (params.has_value()) {
-        try {
-            auto t = std::any_cast<std::tuple<int, int, std::string, std::shared_ptr<NetworkContext>>>(params);
-            w = std::get<0>(t);
-            h = std::get<1>(t);
-            title = std::get<2>(t);
-            ctx = std::get<3>(t);
-        } catch (...) {
-            Logger::warn("[RenderFactory] bad any_cast");
-        }
+    if (_initialized) {
+        CloseWindow();
+        _initialized = false;
+        Logger::info("[RenderSystem] Shutdown");
     }
+}
 
-    return std::make_shared<RenderSystem>(w, h, title, ctx);
+extern "C" std::shared_ptr<System::ISystem> createRenderSystem(std::any params)
+{
+    int w = 800;
+    int h = 600;
+    std::string title = "R-Type Client";
+    std::shared_ptr<Network::network_context_t> ctx;
+
+    try {
+        if (params.has_value()) {
+                auto t = std::any_cast<std::tuple<int, int, std::string, std::shared_ptr<Network::network_context_t>>>(params);
+                w = std::get<0>(t);
+                h = std::get<1>(t);
+                title = std::get<2>(t);
+                ctx = std::get<3>(t);
+        }
+        return std::make_shared<System::RenderSystem>(w, h, title, ctx);
+    } catch (const std::exception& e) {
+        Logger::error(std::string("[Factory]: Failed to create FactorySystem: ") + e.what());
+    }
+    return nullptr;
 }

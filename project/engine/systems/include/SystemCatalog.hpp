@@ -14,18 +14,21 @@
 #include <stdexcept>
 #include <vector>
 #include <iostream>
-#include "DLLoader.hpp"
+#include "DlLoader.hpp"
 #include "ISystem.hpp"
 
-class SystemCatalog {
-    public:
-        SystemCatalog() = default;
-        void registerSystem(const std::string& name, const std::string& path, const std::string& entrypoint);
+namespace System {
 
-        std::shared_ptr<ISystem> loadSystem(const std::string& name, std::any params = {});
+    class SystemCatalog {
+        public:
+            SystemCatalog() = default;
+            void registerSystem(const std::string& name, const std::string& path, const std::string& entrypoint);
 
-    private:
-        std::map<std::string, std::pair<std::string, std::string>> info;
-        std::map<std::string, std::unique_ptr<DLLoader<ISystem>>> loaders;
-};
+            std::shared_ptr<ISystem> loadSystem(const std::string& name, std::any params = {});
 
+        private:
+            std::map<std::string, std::pair<std::string, std::string>> info;
+            std::map<std::string, std::unique_ptr<DlLoader<ISystem>>> loaders;
+    };
+
+}

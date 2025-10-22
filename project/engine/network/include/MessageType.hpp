@@ -30,4 +30,17 @@ namespace Network {
         PLAYER_INPUT
     };
 
+    enum Direction : uint8_t {
+        UP = 1,
+        DOWN,
+        LEFT,
+        RIGHT,
+        SPACE
+    };
+
+    enum ButtonState : uint8_t {
+        PRESS = 1,
+        RELEASE
+    };
+
 }

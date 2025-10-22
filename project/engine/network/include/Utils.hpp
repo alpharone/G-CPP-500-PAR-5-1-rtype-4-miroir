@@ -15,6 +15,7 @@ namespace Network {
     void write_u8(std::vector<uint8_t>& out, uint8_t v);
     void write_u16_le(std::vector<uint8_t>& out, uint16_t v);
     void write_u32_le(std::vector<uint8_t>& out, uint32_t v);
+    void write_u32_le(uint8_t* data, uint32_t v);
     void write_u64_le(std::vector<uint8_t>& out, uint64_t v);
 
     uint8_t read_u8(const uint8_t* data, size_t size, size_t offset);

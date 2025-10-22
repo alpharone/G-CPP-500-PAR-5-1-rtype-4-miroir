@@ -2,7 +2,7 @@
 ** EPITECH PROJECT, 2025
 ** repo
 ** File description:
-** DLLoader
+** DlLoader
 */
 
 #pragma once
@@ -14,22 +14,20 @@
 #include <any>
 
 template <typename T>
-class DLLoader {
+class DlLoader {
     public:
         using Func = std::shared_ptr<T>(*)(std::any);
-        DLLoader(const std::string& filePath, const std::string& entrypoint) : _handle(nullptr), _func(nullptr) {
+        DlLoader(const std::string& filePath, const std::string& entrypoint) : _handle(nullptr), _func(nullptr) {
             if (filePath.empty()) {
-                throw std::invalid_argument("DLLoader: filePath is empty");
+                throw std::invalid_argument("DlLoader: filePath is empty");
             }
             if (entrypoint.empty()) {
-                throw std::invalid_argument("DLLoader: entrypoint is empty");
+                throw std::invalid_argument("DlLoader: entrypoint is empty");
             }
-            
             _handle = dlopen(filePath.c_str(), RTLD_NOW | RTLD_LOCAL);
             if (!_handle) {
                 throw std::runtime_error("Failed to open shared library: " + std::string(dlerror()));
             }
-
             _func = reinterpret_cast<std::shared_ptr<T>(*)(std::any)>(dlsym(_handle, entrypoint.c_str()));
             if (!_func) {
                 dlclose(_handle);
@@ -37,7 +35,7 @@ class DLLoader {
             }
         }
 
-        ~DLLoader() {
+        ~DlLoader() {
             if (_handle) {
                 dlclose(_handle);
                 _handle = nullptr;

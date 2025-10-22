@@ -27,6 +27,14 @@ void Network::write_u32_le(std::vector<uint8_t>& out, uint32_t v)
     out.push_back(static_cast<uint8_t>((v >> 24) & 0xFF));
 }
 
+void Network::write_u32_le(uint8_t* data, uint32_t v)
+{
+    data[0] = static_cast<uint8_t>(v & 0xFF);
+    data[1] = static_cast<uint8_t>((v >> 8) & 0xFF);
+    data[2] = static_cast<uint8_t>((v >> 16) & 0xFF);
+    data[3] = static_cast<uint8_t>((v >> 24) & 0xFF);
+}
+
 void Network::write_u64_le(std::vector<uint8_t>& out, uint64_t v)
 {
     for (int i = 0; i < 8; i++) {

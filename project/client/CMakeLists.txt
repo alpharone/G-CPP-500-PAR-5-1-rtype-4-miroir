@@ -17,7 +17,6 @@ target_link_libraries(client_lib
 
 add_executable(r-type_client
     src/main.cpp
-    src/Client.cpp
 )
 
 set_target_properties(r-type_client PROPERTIES

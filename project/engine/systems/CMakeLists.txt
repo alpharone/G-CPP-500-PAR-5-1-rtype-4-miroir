@@ -29,6 +29,7 @@ add_subdirectory(sound_system)
 add_subdirectory(cleanup_system)
 add_subdirectory(input_system)
 add_subdirectory(spawn_system)
+add_subdirectory(animation_system)
 
 add_custom_target(system_clean
     DEPENDS
@@ -45,6 +46,7 @@ add_custom_target(system_clean
         SoundSystem_clean
         SpawnSystem_clean
         InputSystem_clean
+        AnimationSystem_clean
     COMMENT "-> start clean system"
     COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_CURRENT_BINARY_DIR}/Makefile
     COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_CURRENT_BINARY_DIR}/cmake_install.cmake

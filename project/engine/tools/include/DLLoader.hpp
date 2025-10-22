@@ -49,6 +49,6 @@ class DLLoader {
         }
     
     private:
-        void* _handle;
+        void *_handle;
         Func _func;
 };

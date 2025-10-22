@@ -9,23 +9,34 @@
 
 #include <raylib.h>
 #include <memory>
-#include <NetworkContext.hpp>
-#include <SpriteManager.hpp>
-#include "ISystem.hpp"
-#include "Registry.hpp"
-#include "Position.hpp"
-#include "Velocity.hpp"
+#include <string>
+#include <tuple>
 
-class RenderSystem : public ISystem {
-    public:
-        RenderSystem(int w, int h, const std::string& title, std::shared_ptr<NetworkContext> ctx);
-        ~RenderSystem() override;
-        void update(Ecs::Registry& registry, float dt) override;
-    
-    private:
-        int _w;
-        int _h;
-        std::string _title;
-        std::shared_ptr<NetworkContext> _ctx;
-        SpriteManager _sprites;
-};
+#include "ISystem.hpp"
+#include "Drawable.hpp"
+#include "Position.hpp"
+#include "SpriteManager.hpp"
+#include "NetworkContext.hpp"
+#include "Logger.hpp"
+
+namespace System {
+
+    class RenderSystem : public ISystem {
+        public:
+            RenderSystem(int width, int height, const std::string& title, std::shared_ptr<Network::network_context_t> ctx);
+            ~RenderSystem() override;
+
+            void init(Ecs::Registry& registry) override;
+            void update(Ecs::Registry& registry, double dt) override;
+            void shutdown() override;
+
+        private:
+            int _width;
+            int _height;
+            std::string _title;
+            std::shared_ptr<Network::network_context_t> _ctx;
+            std::unique_ptr<SpriteManager> _spriteManager;
+            bool _initialized;
+    };
+
+}

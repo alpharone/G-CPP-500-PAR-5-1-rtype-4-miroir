@@ -6,6 +6,7 @@
 */
 
 #include "SpriteManager.hpp"
+#include "Logger.hpp"
 
 SpriteManager::~SpriteManager()
 {
@@ -38,4 +39,19 @@ void SpriteManager::unloadAll()
         }
     }
     _cache.clear();
+}
+
+Texture2D SpriteManager::getTexture(const std::string& name)
+{
+    if (_cache.find(name) != _cache.end())
+        return _cache[name];
+
+    if (!FileExists(name.c_str())) {
+        Logger::warn("[SpriteManager] Texture not found: " + name);
+        return Texture2D{};
+    }
+
+    Texture2D tex = LoadTexture(name.c_str());
+    _cache[name] = tex;
+    return tex;
 }

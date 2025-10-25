@@ -9,11 +9,11 @@
 
 namespace Component {
 
-    struct player_t {
-        unsigned int id;
+struct player_t {
+  unsigned int id;
 
-        player_t() = default;
-        player_t(unsigned int _id) noexcept : id(_id){};
-    };
+  player_t() = default;
+  player_t(unsigned int _id) noexcept : id(_id) {};
+};
 
-}
+} // namespace Component

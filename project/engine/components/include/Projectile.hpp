@@ -9,13 +9,13 @@
 
 namespace Component {
 
-    struct projectile_t {
-        float dmg;
-        int ownerId;
+struct projectile_t {
+  float dmg;
+  int ownerId;
 
-        projectile_t() = default;
-        projectile_t(float _dmg, int _ownerId) noexcept :
-        dmg(_dmg), ownerId(_ownerId){}
-    };
+  projectile_t() = default;
+  projectile_t(float _dmg, int _ownerId) noexcept
+      : dmg(_dmg), ownerId(_ownerId) {}
+};
 
-}
+} // namespace Component

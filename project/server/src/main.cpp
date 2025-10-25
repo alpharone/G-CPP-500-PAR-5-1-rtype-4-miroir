@@ -5,37 +5,39 @@
 ** main
 */
 
-#include "SystemManager.hpp"
-#include "Logger.hpp"
-#include "Registry.hpp"
-#include <chrono>
-#include <thread>
 #include <AsioNetworkTransport.hpp>
 #include <DefaultMessageSerializer.hpp>
 #include <ReliableLayerAdapter.hpp>
+#include <chrono>
+#include <thread>
 
-int main()
-{
-    Logger::init("logs/server.log");
-    Ecs::Registry registry;
+#include "Logger.hpp"
+#include "Registry.hpp"
+#include "SystemManager.hpp"
 
-    System::SystemCatalog catalog;
-    System::SystemManager manager;
+int main() {
+  Logger::init("logs/server.log");
+  Ecs::Registry registry;
 
-    catalog.registerSystem("server_net", "./plugins/systems/libServerNetworkSystem.so", "createServerNetworkSystem");
-    auto serverNet = catalog.loadSystem("server_net", (unsigned short)4242);
-    manager.registerSystem(serverNet);
+  System::SystemCatalog catalog;
+  System::SystemManager manager;
 
-    manager.initAll(registry);
-    Logger::info("[Server] Running...");
-    const float dt = 1.f/60.f;
-    while (true) {
-        manager.updateAll(registry, dt);
-        std::this_thread::sleep_for(std::chrono::milliseconds(16));
-    }
+  catalog.registerSystem("server_net",
+                         "./plugins/systems/libServerNetworkSystem.so",
+                         "createServerNetworkSystem");
+  auto serverNet = catalog.loadSystem("server_net", (unsigned short)4242);
+  manager.registerSystem(serverNet);
 
-    manager.shutdownAll();
-    manager.clearAll();
-    Logger::shutdown();
-    return 0;
+  manager.initAll(registry);
+  Logger::info("[Server] Running...");
+  const float dt = 1.f / 60.f;
+  while (true) {
+    manager.updateAll(registry, dt);
+    std::this_thread::sleep_for(std::chrono::milliseconds(16));
+  }
+
+  manager.shutdownAll();
+  manager.clearAll();
+  Logger::shutdown();
+  return 0;
 }

@@ -8,28 +8,29 @@
 #pragma once
 
 #include <raylib.h>
-#include <unordered_map>
+
 #include <memory>
+#include <unordered_map>
 
 #include "ISystem.hpp"
+#include "Logger.hpp"
 #include "NetworkContext.hpp"
 #include "Packets.hpp"
-#include "Logger.hpp"
 
 namespace System {
 
-    class InputSystem : public ISystem {
-        public:
-            explicit InputSystem(std::shared_ptr<Network::network_context_t> ctx);
-            ~InputSystem() override = default;
-        
-            void init(Ecs::Registry& registry) override;
-            void update(Ecs::Registry& registry, double dt) override;
-            void shutdown() override;
-        
-        private:
-            std::shared_ptr<Network::network_context_t> _ctx;
-            std::unordered_map<int, uint8_t> _keyMapping;
-    };
+class InputSystem : public ISystem {
+public:
+  explicit InputSystem(std::shared_ptr<Network::network_context_t> ctx);
+  ~InputSystem() override = default;
 
-}
+  void init(Ecs::Registry &registry) override;
+  void update(Ecs::Registry &registry, double dt) override;
+  void shutdown() override;
+
+private:
+  std::shared_ptr<Network::network_context_t> _ctx;
+  std::unordered_map<int, uint8_t> _keyMapping;
+};
+
+} // namespace System

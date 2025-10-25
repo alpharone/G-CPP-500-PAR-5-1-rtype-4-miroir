@@ -9,7 +9,6 @@
 
 namespace Component {
 
-    struct controllable_t {
-    };
+struct controllable_t {};
 
-}
+} // namespace Component

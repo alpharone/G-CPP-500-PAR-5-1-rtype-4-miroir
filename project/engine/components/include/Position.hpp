@@ -9,13 +9,12 @@
 
 namespace Component {
 
-    struct position_t {
-        float x;
-        float y;
+struct position_t {
+  float x;
+  float y;
 
-        position_t() = default;
-        position_t(float _x, float _y) noexcept :
-        x(_x), y(_y){}
-    };
+  position_t() = default;
+  position_t(float _x, float _y) noexcept : x(_x), y(_y) {}
+};
 
-}
+} // namespace Component

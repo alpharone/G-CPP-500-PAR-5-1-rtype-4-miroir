@@ -87,3 +87,8 @@ add_custom_target(re
     COMMAND cmake -S ${CMAKE_SOURCE_DIR} -B ${CMAKE_BINARY_DIR}
     COMMAND ${CMAKE_COMMAND} --build . -j
 )
+
+add_custom_target(format
+    COMMENT "-> format C++ code with clang-format"
+    COMMAND find ${CMAKE_SOURCE_DIR}/project -name "*.cpp" -o -name "*.hpp" | xargs clang-format -i --style=file
+)

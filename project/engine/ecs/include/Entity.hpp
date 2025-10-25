@@ -11,16 +11,16 @@
 
 namespace Ecs {
 
-    class Entity {
-        public:
-            explicit Entity(size_t id = 0) noexcept;
+class Entity {
+public:
+  explicit Entity(size_t id = 0) noexcept;
 
-            operator size_t() const noexcept;
-            bool operator==(Entity const& other) const noexcept;
-            bool operator!=(Entity const& other) const noexcept;
+  operator size_t() const noexcept;
+  bool operator==(Entity const &other) const noexcept;
+  bool operator!=(Entity const &other) const noexcept;
 
-        private:
-            size_t _id;
-    };
+private:
+  size_t _id;
+};
 
-}
+} // namespace Ecs

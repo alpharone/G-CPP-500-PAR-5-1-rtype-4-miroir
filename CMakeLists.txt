@@ -89,6 +89,11 @@ add_custom_target(re
 )
 
 add_custom_target(format
-    COMMENT "-> format C++ code with clang-format"
+    COMMENT "→ format C++ code with clang-format"
     COMMAND find ${CMAKE_SOURCE_DIR}/project -name "*.cpp" -o -name "*.hpp" | xargs clang-format -i --style=file
+)
+
+add_custom_target(tidy
+    COMMENT "→ run clang-tidy on C++ code"
+    COMMAND find ${CMAKE_SOURCE_DIR}/project -name "*.cpp" | xargs /opt/homebrew/opt/llvm/bin/clang-tidy --config-file=${CMAKE_SOURCE_DIR}/.clang-tidy -p=${CMAKE_BINARY_DIR}
 )

@@ -10,7 +10,6 @@
 #include <raylib.h>
 #include <unordered_map>
 #include <memory>
-
 #include "ISystem.hpp"
 #include "NetworkContext.hpp"
 #include "Packets.hpp"

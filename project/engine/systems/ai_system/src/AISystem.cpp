@@ -1,15 +1,15 @@
-#include "../include/AISystem.hpp"
+#include "AISystem.hpp"
 #include <fstream>
 #include <sstream>
 #include <iostream>
 #include <cmath>
 
-IaSystem::IaSystem(const std::string& configPath, Ecs::Entity target) : _target(target)
+System::IaSystem::IaSystem(const std::string& configPath, Ecs::Entity target) : _target(target)
 {
     loadConfig(configPath);
 }
 
-void IaSystem::init(Ecs::Registry& registry)
+void System::IaSystem::init(Ecs::Registry& registry)
 {
     _entity = registry.spawnEntity();
     float spawnX = 0.f, spawnY = 200.f;
@@ -21,15 +21,15 @@ void IaSystem::init(Ecs::Registry& registry)
             spawnY = s.amplitude;
     }
 
-    registry.emplaceComponent<Position>(_entity, Position{spawnX, spawnY});
-    registry.emplaceComponent<Velocity>(_entity, Velocity{0, 0});
-    registry.emplaceComponent<Health>(_entity, Health{10});
+    registry.emplaceComponent<position_t_t>(_entity, position_t_t{spawnX, spawnY});
+    registry.emplaceComponent<velocity_t>(_entity, velocity_t{0, 0});
+    registry.emplaceComponent<healt_t>(_entity, healt_t{10});
 }
 
-void IaSystem::shutdown()
+void System::IaSystem::shutdown()
 {}
 
-void IaSystem::loadConfig(const std::string& path)
+void System::IaSystem::loadConfig(const std::string& path)
 {
     std::ifstream file(path);
     if (!file.is_open()) {
@@ -45,7 +45,7 @@ void IaSystem::loadConfig(const std::string& path)
     }
 }
 
-void IaSystem::parseState(std::ifstream& file)
+void System::IaSystem::parseState(std::ifstream& file)
 {
     State state;
     std::string line;
@@ -77,7 +77,7 @@ void IaSystem::parseState(std::ifstream& file)
     _states.push_back(state);
 }
 
-void IaSystem::update(Ecs::Registry& reg, double dt)
+void System::IaSystem::update(Ecs::Registry& reg, double dt)
 {
     _time += dt;
     _stateTimer += dt;
@@ -105,7 +105,7 @@ void IaSystem::update(Ecs::Registry& reg, double dt)
     }
 }
 
-void IaSystem::executeState(Ecs::Registry& reg, State& s, double dt)
+void System::IaSystem::executeState(Ecs::Registry& reg, State& s, double dt)
 {
     if (s.movement == "Chaser")
         moveChaser(reg, dt);
@@ -124,18 +124,18 @@ void IaSystem::executeState(Ecs::Registry& reg, State& s, double dt)
         shootSpread(reg);
 }
 
-bool IaSystem::checkCondition(Ecs::Registry& reg, State& s)
+bool System::IaSystem::checkCondition(Ecs::Registry& reg, State& s)
 {
-    auto& posOpt = reg.getComponents<Position>()[_entity];
-    auto& playerOpt = reg.getComponents<Position>()[_target];
-    auto& hpOpt = reg.getComponents<Health>()[_entity];
+    auto& posOpt = reg.getComponents<position_t>()[_entity];
+    auto& playerOpt = reg.getComponents<position_t>()[_target];
+    auto& hpOpt = reg.getComponents<healt_t>()[_entity];
 
     if (!posOpt.has_value() || !playerOpt.has_value() || !hpOpt.has_value())
         return false;
 
-    const Position& pos = *posOpt;
-    const Position& player = *playerOpt;
-    const Health& hp = *hpOpt;
+    const position_t& pos = *posOpt;
+    const position_t& player = *playerOpt;
+    const healt_t& hp = *hpOpt;
 
     float dx = player.x - pos.x;
     float dy = player.y - pos.y;
@@ -161,10 +161,10 @@ bool IaSystem::checkCondition(Ecs::Registry& reg, State& s)
     return false;
 }
 
-void IaSystem::moveChaser(Ecs::Registry& reg, double dt)
+void System::IaSystem::moveChaser(Ecs::Registry& reg, double dt)
 {
-    auto& posOpt = reg.getComponents<Position>()[_entity];
-    auto& velOpt = reg.getComponents<Velocity>()[_entity];
+    auto& posOpt = reg.getComponents<position_t>()[_entity];
+    auto& velOpt = reg.getComponents<velocity_t>()[_entity];
     if (!posOpt || !velOpt)
         return;
 
@@ -175,9 +175,9 @@ void IaSystem::moveChaser(Ecs::Registry& reg, double dt)
     pos.x += vel.vx;
 }
 
-void IaSystem::moveSine(Ecs::Registry& reg, double dt)
+void System::IaSystem::moveSine(Ecs::Registry& reg, double dt)
 {
-    auto& posOpt = reg.getComponents<Position>()[_entity];
+    auto& posOpt = reg.getComponents<position_t>()[_entity];
     if (!posOpt)
         return;
     auto& pos = *posOpt;
@@ -186,9 +186,9 @@ void IaSystem::moveSine(Ecs::Registry& reg, double dt)
     pos.y = 200 + 30.f * std::sin(_time * 2);
 }
 
-void IaSystem::moveZigzag(Ecs::Registry& reg, double dt)
+void System::IaSystem::moveZigzag(Ecs::Registry& reg, double dt)
 {
-    auto& posOpt = reg.getComponents<Position>()[_entity];
+    auto& posOpt = reg.getComponents<position_t>()[_entity];
     if (!posOpt)
         return;
     auto& pos = *posOpt;
@@ -197,10 +197,10 @@ void IaSystem::moveZigzag(Ecs::Registry& reg, double dt)
     pos.y += std::sin(_time * 8) * 60.f * dt;
 }
 
-void IaSystem::moveCharge(Ecs::Registry& reg, double dt)
+void System::IaSystem::moveCharge(Ecs::Registry& reg, double dt)
 {
-    auto& posOpt = reg.getComponents<Position>()[_entity];
-    auto& playerOpt = reg.getComponents<Position>()[_target];
+    auto& posOpt = reg.getComponents<position_t>()[_entity];
+    auto& playerOpt = reg.getComponents<position_t>()[_target];
     if (!posOpt || !playerOpt)
         return;
 
@@ -216,30 +216,30 @@ void IaSystem::moveCharge(Ecs::Registry& reg, double dt)
     }
 }
 
-void IaSystem::shootDirect(Ecs::Registry& reg)
+void System::IaSystem::shootDirect(Ecs::Registry& reg)
 {
     if (_shootCooldowns["Direct"] > 0.f)
         return;
     _shootCooldowns["Direct"] = 0.5f;
 
-    auto& posOpt = reg.getComponents<Position>()[_entity];
+    auto& posOpt = reg.getComponents<position_t>()[_entity];
     if (!posOpt)
         return;
     auto& pos = *posOpt;
 
     Ecs::Entity bullet = reg.spawnEntity();
-    reg.emplaceComponent<Position>(bullet, Position{pos.x, pos.y});
-    reg.emplaceComponent<Velocity>(bullet, Velocity{300.f, 0.f});
+    reg.emplaceComponent<position_t>(bullet, position_t{pos.x, pos.y});
+    reg.emplaceComponent<velocity_t>(bullet, velocity_t{300.f, 0.f});
 }
 
-void IaSystem::shootHoming(Ecs::Registry& reg)
+void System::IaSystem::shootHoming(Ecs::Registry& reg)
 {
     if (_shootCooldowns["Homing"] > 0.f)
         return;
     _shootCooldowns["Homing"] = 1.f;
 
-    auto& posOpt = reg.getComponents<Position>()[_entity];
-    auto& playerOpt = reg.getComponents<Position>()[_target];
+    auto& posOpt = reg.getComponents<position_t>()[_entity];
+    auto& playerOpt = reg.getComponents<position_t>()[_target];
     if (!posOpt || !playerOpt)
         return;
 
@@ -255,17 +255,17 @@ void IaSystem::shootHoming(Ecs::Registry& reg)
     dy /= len;
 
     Ecs::Entity bullet = reg.spawnEntity();
-    reg.emplaceComponent<Position>(bullet, Position{pos.x, pos.y});
-    reg.emplaceComponent<Velocity>(bullet, Velocity{dx * 200.f, dy * 200.f});
+    reg.emplaceComponent<position_t>(bullet, position_t{pos.x, pos.y});
+    reg.emplaceComponent<velocity_t>(bullet, velocity_t{dx * 200.f, dy * 200.f});
 }
 
-void IaSystem::shootSpread(Ecs::Registry& reg)
+void System::IaSystem::shootSpread(Ecs::Registry& reg)
 {
     if (_shootCooldowns["Spread"] > 0.f)
         return;
     _shootCooldowns["Spread"] = 2.f;
 
-    auto& posOpt = reg.getComponents<Position>()[_entity];
+    auto& posOpt = reg.getComponents<position_t>()[_entity];
     if (!posOpt)
         return;
     auto& pos = *posOpt;
@@ -279,10 +279,20 @@ void IaSystem::shootSpread(Ecs::Registry& reg)
     for (int i = 0; i < count; ++i) {
         float angle = (base + i * step) * 3.14159265f / 180.f;
         Ecs::Entity bullet = reg.spawnEntity();
-        reg.emplaceComponent<Position>(bullet, Position{pos.x, pos.y});
-        reg.emplaceComponent<Velocity>(bullet, Velocity{
+        reg.emplaceComponent<position_t>(bullet, position_t{pos.x, pos.y});
+        reg.emplaceComponent<velocity_t>(bullet, velocity_t_t{
             std::cos(angle) * speed,
             std::sin(angle) * speed
         });
     }
 }
+
+// extern "C" std::shared_ptr<System::ISystem> createInputSystem(std::any params)
+// {
+//     try {
+//         return std::make_shared<System::PhysicsSystem>();
+//     } catch (const std::exception& e) {
+//         Logger::error(std::string("[Factory]: Failed to create InputSystem: ") + e.what());
+//     }
+//     return nullptr;
+// }

@@ -4,11 +4,17 @@
 #include <vector>
 #include <functional>
 #include <optional>
-#include "../../../engine/ecs/include/Registry.hpp"
+#include "ISystem.hpp"
+#include "Position.hpp"
+#include "Velocity.hpp"
+//#include "Health.hpp"
+#include "Registry.hpp"
 
-struct Position { float x = 0.f, y = 0.f; };
-struct Velocity { float vx = 0.f, vy = 0.f; };
-struct Health { int hp = 10; };
+// struct Position { float x = 0.f, y = 0.f; };
+// struct Velocity { float vx = 0.f, vy = 0.f; };
+// struct Health { int hp = 10; };
+
+namespace System {
 
 class IaSystem {
 public:
@@ -53,3 +59,4 @@ private:
     void shootHoming(Ecs::Registry& reg);
     void shootSpread(Ecs::Registry& reg);
 };
+}

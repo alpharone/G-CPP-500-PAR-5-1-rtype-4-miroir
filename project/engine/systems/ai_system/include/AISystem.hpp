@@ -1,11 +1,10 @@
 #pragma once
+#include "../../../engine/ecs/include/Registry.hpp"
 #include <functional>
 #include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
-
-#include "../../../engine/ecs/include/Registry.hpp"
 
 struct Position {
   float x = 0.f, y = 0.f;

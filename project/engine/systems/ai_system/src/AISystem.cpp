@@ -1,5 +1,4 @@
 #include "../include/AISystem.hpp"
-
 #include <cmath>
 #include <fstream>
 #include <iostream>

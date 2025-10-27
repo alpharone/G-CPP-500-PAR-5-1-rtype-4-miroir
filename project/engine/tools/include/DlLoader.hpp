@@ -7,10 +7,10 @@
 
 #pragma once
 
-#include <dlfcn.h>
-
 #include <any>
+#include <dlfcn.h>
 #include <iostream>
+#include <memory>
 #include <stdexcept>
 #include <string>
 
@@ -25,17 +25,19 @@ public:
     if (entrypoint.empty()) {
       throw std::invalid_argument("DlLoader: entrypoint is empty");
     }
-    _handle = dlopen(filePath.c_str(), RTLD_NOW | RTLD_LOCAL);
+    _handle = dlopen(filePath.c_str(), RTLD_NOW | RTLD_GLOBAL);
     if (!_handle) {
+      const char *err = dlerror();
       throw std::runtime_error("Failed to open shared library: " +
-                               std::string(dlerror()));
+                               (err ? std::string(err) : "unknown error"));
     }
     _func = reinterpret_cast<std::shared_ptr<T> (*)(std::any)>(
         dlsym(_handle, entrypoint.c_str()));
     if (!_func) {
       dlclose(_handle);
+      const char *err = dlerror();
       throw std::runtime_error("Failed to get entrypoint function: " +
-                               std::string(dlerror()));
+                               (err ? std::string(err) : "unknown error"));
     }
   }
 

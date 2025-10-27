@@ -7,14 +7,13 @@
 
 #pragma once
 
-#include <mutex>
-#include <unordered_map>
-#include <unordered_set>
-
 #include "ISystem.hpp"
 #include "Logger.hpp"
 #include "ReliableLayerAdapter.hpp"
 #include "RoomManager.hpp"
+#include <mutex>
+#include <unordered_map>
+#include <unordered_set>
 
 namespace System {
 
@@ -48,6 +47,16 @@ private:
 
   uint32_t _mainRoomId = 0;
   unsigned short _port;
+  float _start_x;
+  float _start_y;
+  float _speed;
+  int _max_players;
+  int _max_rooms;
+  int _timeout;
+  int _screen_width;
+  int _screen_height;
+  float _snapshot_interval;
+  std::chrono::steady_clock::time_point _startTime;
 };
 
 } // namespace System

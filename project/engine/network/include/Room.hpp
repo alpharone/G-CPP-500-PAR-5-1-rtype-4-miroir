@@ -7,14 +7,13 @@
 
 #pragma once
 
+#include "Packets.hpp"
 #include <asio.hpp>
 #include <chrono>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-
-#include "Packets.hpp"
 
 using asio::ip::udp;
 
@@ -44,6 +43,7 @@ struct room_client_t {
   float lastSnapX{100};
   float lastSnapY{100};
   std::unordered_set<uint8_t> pressedKeys;
+  std::string sprite;
 };
 
 struct pending_input_t {

@@ -6,18 +6,24 @@
 */
 
 #include "RoomManager.hpp"
-
-#include <chrono>
-
 #include "Logger.hpp"
 #include "MessageType.hpp"
 #include "Utils.hpp"
+#include <chrono>
 
 using namespace std::chrono;
 
 namespace Network {
 
-RoomManager::RoomManager() {}
+RoomManager::RoomManager(float start_x, float start_y, float speed,
+                         int max_players, int max_rooms, int timeout,
+                         int screen_width, int screen_height,
+                         double snapshot_interval,
+                         std::chrono::steady_clock::time_point start_time)
+    : _start_x(start_x), _start_y(start_y), _speed(speed),
+      _max_players(max_players), _max_rooms(max_rooms), _timeout(timeout),
+      _screen_width(screen_width), _screen_height(screen_height),
+      _snapshot_interval(snapshot_interval), _start_time(start_time) {}
 
 RoomManager::~RoomManager() {}
 
@@ -30,14 +36,17 @@ uint32_t RoomManager::createRoom() {
 }
 
 std::optional<std::pair<uint32_t, uint32_t>>
-RoomManager::joinAuto(const endpoint_t &endpoint) {
+RoomManager::joinAuto(const endpoint_t &endpoint, const std::string &sprite) {
   std::lock_guard<std::mutex> lock(_roomsMtx);
 
   for (auto &[id, room] : _rooms) {
     std::lock_guard<std::mutex> rlk(room.mtx);
-    if (room.clients.size() < static_cast<size_t>(MAX_PLAYERS_PER_ROOM)) {
+    if (room.clients.size() < static_cast<size_t>(_max_players)) {
       uint32_t cid = room.nextClientId++;
       room_client_t rc{cid, endpoint, false, steady_clock::now()};
+      rc.posX = _start_x;
+      rc.posY = _start_y;
+      rc.sprite = sprite;
       room.clients.emplace(cid, std::move(rc));
 
       Network::Packet accept;
@@ -57,6 +66,7 @@ RoomManager::joinAuto(const endpoint_t &endpoint) {
   room_t newRoom{newRoomId};
   uint32_t cid = newRoom.nextClientId += 1;
   room_client_t rc{cid, endpoint, false, steady_clock::now()};
+  rc.sprite = sprite;
   newRoom.clients.emplace(cid, std::move(rc));
 
   Network::Packet accept;
@@ -182,7 +192,7 @@ void RoomManager::tick(double dt) {
     std::lock_guard<std::mutex> rlk(room.mtx);
 
     for (auto &[cid, client] : room.clients) {
-      float speed = 200.0f * dt;
+      float speed = _speed * dt;
       for (uint8_t code : client.pressedKeys) {
         switch (code) {
         case Network::UP:
@@ -201,6 +211,14 @@ void RoomManager::tick(double dt) {
           break;
         }
       }
+      if (client.posX < 0)
+        client.posX = 0;
+      if (client.posX > _screen_width)
+        client.posX = _screen_width;
+      if (client.posY < 0)
+        client.posY = 0;
+      if (client.posY > _screen_height)
+        client.posY = _screen_height;
     }
 
     room.pendingInputs.clear();
@@ -210,7 +228,7 @@ void RoomManager::tick(double dt) {
       auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
                          now - client.lastSeen)
                          .count();
-      if (elapsed > 60)
+      if (elapsed > _timeout)
         toRemove.push_back(cid);
     }
     for (auto cid : toRemove) {
@@ -220,17 +238,22 @@ void RoomManager::tick(double dt) {
     }
 
     room.snapshotTimer += dt;
-    if (room.snapshotTimer >= 0.05) {
+    if (room.snapshotTimer >= _snapshot_interval) {
       room.snapshotTimer = 0.0;
 
       Network::Packet snap;
       snap.header.type = Network::SERVER_SNAPSHOT;
-      bool hasChanges = false;
+
+      double timestamp = std::chrono::duration<double>(
+                             std::chrono::steady_clock::now() - _start_time)
+                             .count();
+      uint64_t timestampInt;
+      std::memcpy(&timestampInt, &timestamp, sizeof(double));
+      Network::write_u64_le(snap.payload, timestampInt);
 
       for (auto &[cid, client] : room.clients) {
         if (client.posX != client.lastSnapX ||
             client.posY != client.lastSnapY) {
-          hasChanges = true;
           client.lastSnapX = client.posX;
           client.lastSnapY = client.posY;
         }

@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include "DlLoader.hpp"
+#include "ISystem.hpp"
 #include <any>
 #include <iostream>
 #include <map>
@@ -14,9 +16,6 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
-
-#include "DlLoader.hpp"
-#include "ISystem.hpp"
 
 namespace System {
 

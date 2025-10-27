@@ -6,9 +6,8 @@
 */
 
 #pragma once
-#include <raylib.h>
-
 #include <mutex>
+#include <raylib.h>
 #include <string>
 #include <unordered_map>
 

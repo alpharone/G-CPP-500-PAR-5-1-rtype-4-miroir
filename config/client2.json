@@ -1,0 +1,55 @@
+{
+  "systems": [
+    {
+      "name": "client_net",
+      "lib": "./plugins/systems/libClientNetworkSystem.so",
+      "factory": "createClientNetworkSystem",
+      "params": ["server_ip", "server_port", "netCtx", "player_sprite"]
+    },
+    {
+      "name": "render",
+      "lib": "./plugins/systems/libRenderSystem.so",
+      "factory": "createRenderSystem",
+      "params": ["window_width", "window_height", "window_title", "netCtx"]
+    },
+    {
+      "name": "input",
+      "lib": "./plugins/systems/libInputSystem.so",
+      "factory": "createInputSystem",
+      "params": ["netCtx"]
+    }
+  ],
+  "globals": {
+    "server_ip": "127.0.0.1",
+    "server_port": 4242,
+    "window_width": 1200,
+    "window_height": 1000,
+    "window_title": "R-Type Client",
+    "player_sprite": "assets/sprites/r-typesheet43.gif"
+  },
+  "player": {
+    "sprite_sheet": "assets/sprites/player_ships.png",
+    "frame_x": 0,
+    "frame_y": 0,
+    "frame_w": 64,
+    "frame_h": 64,
+    "animation": { "frame_count": 4, "frame_time": 0.2 },
+    "speed": 20,
+    "health": 100
+  },
+  "network": {
+    "server_ip": "127.0.0.1",
+    "server_port": 4242,
+    "reconnect_timeout": 5
+  },
+  "display": {
+    "window_width": 1200,
+    "window_height": 1000,
+    "window_title": "R-Type Client",
+    "fps_target": 60
+  },
+  "assets": {
+    "background": "assets/bg/space.png",
+    "ui_font": "assets/fonts/arial.ttf"
+  }
+}

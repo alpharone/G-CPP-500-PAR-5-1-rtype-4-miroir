@@ -6,13 +6,11 @@
 */
 
 #include "ReliableChannel.hpp"
-
+#include "MessageType.hpp"
+#include "Utils.hpp"
 #include <algorithm>
 #include <chrono>
 #include <cstring>
-
-#include "MessageType.hpp"
-#include "Utils.hpp"
 
 using namespace std::chrono;
 

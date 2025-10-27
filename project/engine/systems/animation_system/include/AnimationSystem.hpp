@@ -7,12 +7,12 @@
 
 #pragma once
 
+#include "ISystem.hpp"
+#include "SpriteManager.hpp"
 #include <any>
 #include <memory>
 #include <string>
-
-#include "ISystem.hpp"
-#include "SpriteManager.hpp"
+#include <vector>
 
 namespace System {
 

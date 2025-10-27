@@ -6,7 +6,6 @@
 */
 
 #include "ServerNetworkSystem.hpp"
-
 #include "AsioNetworkTransport.hpp"
 #include "DefaultMessageSerializer.hpp"
 #include "MessageType.hpp"
@@ -14,7 +13,9 @@
 #include "Utils.hpp"
 
 System::ServerNetworkSystem::ServerNetworkSystem(unsigned short port)
-    : _port(port) {}
+    : _port(port), _start_x(100), _start_y(200), _speed(200), _max_players(4),
+      _max_rooms(10), _timeout(60), _screen_width(1200), _screen_height(1000),
+      _snapshot_interval(0.016), _startTime(std::chrono::steady_clock::now()) {}
 
 void System::ServerNetworkSystem::init(Ecs::Registry &) {
   _transport =
@@ -22,7 +23,9 @@ void System::ServerNetworkSystem::init(Ecs::Registry &) {
   _serializer = std::make_shared<Network::DefaultMessageSerializer>();
   _adapter = std::make_unique<Network::ReliableLayerAdapter>(_transport,
                                                              _serializer, 1200);
-  _rooms = std::make_unique<Network::RoomManager>();
+  _rooms = std::make_unique<Network::RoomManager>(
+      _start_x, _start_y, _speed, _max_players, _max_rooms, _timeout,
+      _screen_width, _screen_height, _snapshot_interval, _startTime);
 
   _mainRoomId = _rooms->createRoom();
   Logger::info("[Server] Created main room #" + std::to_string(_mainRoomId));
@@ -93,7 +96,7 @@ void System::ServerNetworkSystem::onAppPacket(const Network::Packet &pkt,
 }
 
 void System::ServerNetworkSystem::handleNewClient(
-    const Network::Packet &, const Network::endpoint_t &from) {
+    const Network::Packet &pkt, const Network::endpoint_t &from) {
   std::string key = from.address + ":" + std::to_string(from.port);
 
   {
@@ -106,7 +109,10 @@ void System::ServerNetworkSystem::handleNewClient(
 
   Logger::info("[Server] Received NEW_CLIENT from " + key);
 
-  auto joinResult = _rooms->joinAuto(from);
+  std::string sprite(pkt.payload.begin(), pkt.payload.end());
+  Logger::info("[Server] Client sprite: " + sprite);
+
+  auto joinResult = _rooms->joinAuto(from, sprite);
   if (!joinResult.has_value()) {
     Logger::warn("[Server] Could not assign client to any room.");
     return;
@@ -134,7 +140,7 @@ void System::ServerNetworkSystem::handleNewClient(
                           static_cast<uint32_t>(existingClient.posX));
     Network::write_u32_le(spawnExisting.payload,
                           static_cast<uint32_t>(existingClient.posY));
-    std::string sprite = "assets/sprites/r-typesheet42.gif";
+    std::string sprite = existingClient.sprite;
     spawnExisting.payload.insert(spawnExisting.payload.end(), sprite.begin(),
                                  sprite.end());
     spawnExisting.header.length =
@@ -150,10 +156,11 @@ void System::ServerNetworkSystem::handleNewClient(
   Network::write_u32_le(spawnNew.payload, clientId);
   uint32_t x = 100;
   uint32_t y = 200;
-  std::string sprite = "assets/sprites/r-typesheet42.gif";
+  std::string newClientSprite = sprite;
   Network::write_u32_le(spawnNew.payload, x);
   Network::write_u32_le(spawnNew.payload, y);
-  spawnNew.payload.insert(spawnNew.payload.end(), sprite.begin(), sprite.end());
+  spawnNew.payload.insert(spawnNew.payload.end(), newClientSprite.begin(),
+                          newClientSprite.end());
   spawnNew.header.length = static_cast<uint16_t>(spawnNew.payload.size());
   for (auto &[existingId, existingClient] : room.clients) {
     if (existingId == clientId)
@@ -195,11 +202,11 @@ void System::ServerNetworkSystem::handleDisconnect(
 
 extern "C" std::shared_ptr<System::ISystem>
 createServerNetworkSystem(std::any params) {
-  unsigned short port = 4242;
   try {
-    if (params.has_value())
-      port = std::any_cast<unsigned short>(params);
-    return std::make_shared<System::ServerNetworkSystem>(port);
+    auto vec = std::any_cast<std::vector<std::any>>(params);
+    auto port = std::any_cast<int>(vec[0]);
+    return std::make_shared<System::ServerNetworkSystem>(
+        static_cast<unsigned short>(port));
   } catch (const std::exception &e) {
     Logger::error(
         std::string("[Factory]: Failed to create ServerNetworkSystem: ") +

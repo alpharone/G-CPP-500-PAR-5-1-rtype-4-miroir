@@ -1,0 +1,114 @@
+{
+  "systems": [
+    {
+      "name": "server_net",
+      "lib": "./plugins/systems/libServerNetworkSystem.so",
+      "factory": "createServerNetworkSystem",
+      "params": ["server_port", "player_start_x", "player_start_y", "player_speed", "max_players_per_room", "max_rooms", "timeout_inactive", "screen_width", "screen_height", "snapshot_fps"]
+    }
+  ],
+  "rooms": {
+    "max_players_per_room": 4,
+    "max_rooms": 10,
+    "server_port": 4242,
+    "timeout_inactive": 60
+  },
+  "levels": [
+    {
+      "name": "level1",
+      "background": "assets/bg/level1.png",
+      "duration": 60,
+      "enemies": [
+        { "type": "chaser", "spawn_x": 800, "spawn_y": 300, "spawn_time": 10 },
+        { "type": "drone", "spawn_x": 1000, "spawn_y": 200, "spawn_time": 20 },
+        { "type": "zigzag", "spawn_x": 1200, "spawn_y": 400, "spawn_time": 30 }
+      ]
+    },
+    {
+      "name": "level2",
+      "background": "assets/bg/level2.png",
+      "duration": 90,
+      "enemies": [
+        { "type": "boss", "spawn_x": 1000, "spawn_y": 300, "spawn_time": 0 }
+      ]
+    }
+  ],
+  "enemies": [
+    {
+      "type": "chaser",
+      "sprite_sheet": "assets/sprites/enemies.png",
+      "frame_x": 0,
+      "frame_y": 0,
+      "frame_w": 64,
+      "frame_h": 64,
+      "animation": { "frame_count": 4, "frame_time": 0.1 },
+      "pattern": "chase_player",
+      "health": 100,
+      "speed": 150,
+      "damage": 20,
+      "points": 10
+    },
+    {
+      "type": "drone",
+      "sprite_sheet": "assets/sprites/enemies.png",
+      "frame_x": 0,
+      "frame_y": 0,
+      "frame_w": 64,
+      "frame_h": 64,
+      "animation": { "frame_count": 2, "frame_time": 0.2 },
+      "pattern": "zigzag",
+      "health": 50,
+      "speed": 100,
+      "damage": 10,
+      "points": 5
+    },
+    {
+      "type": "zigzag",
+      "sprite_sheet": "assets/sprites/enemies.png",
+      "frame_x": 0,
+      "frame_y": 0,
+      "frame_w": 64,
+      "frame_h": 64,
+      "animation": { "frame_count": 3, "frame_time": 0.15 },
+      "pattern": "zigzag",
+      "health": 75,
+      "speed": 120,
+      "damage": 15,
+      "points": 8
+    },
+    {
+      "type": "boss",
+      "sprite_sheet": "assets/sprites/boss.png",
+      "animation": { "frame_count": 8, "frame_time": 0.1 },
+      "pattern": "boss_pattern",
+      "health": 500,
+      "speed": 80,
+      "damage": 50,
+      "points": 100
+    }
+  ],
+  "physics": {
+    "gravity": 0.0,
+    "friction": 0.99,
+    "collision_layers": ["player", "enemy", "bullet", "wall"]
+  },
+  "game": {
+    "max_levels": 10,
+    "player_respawn_time": 3.0,
+    "enemy_bullet_speed": 300,
+    "player_bullet_speed": 400,
+    "powerup_duration": 10
+  },
+  "globals": {
+    "server_port": 4242,
+    "player_start_x": 100,
+    "player_start_y": 200,
+    "player_speed": 200,
+    "max_players_per_room": 2,
+    "max_rooms": 10,
+    "timeout_inactive": 60,
+    "screen_width": 1200,
+    "screen_height": 1000,
+    "snapshot_fps": 120
+  }
+}

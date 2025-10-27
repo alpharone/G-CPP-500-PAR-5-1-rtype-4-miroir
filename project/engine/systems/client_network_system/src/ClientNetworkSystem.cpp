@@ -6,7 +6,6 @@
 */
 
 #include "ClientNetworkSystem.hpp"
-
 #include "AsioNetworkTransport.hpp"
 #include "DefaultMessageSerializer.hpp"
 #include "Drawable.hpp"
@@ -16,8 +15,9 @@
 
 System::ClientNetworkSystem::ClientNetworkSystem(
     const std::string &host, unsigned short port,
-    std::shared_ptr<Network::network_context_t> ctx)
-    : _ctx(std::move(ctx)), _lastPacketTime(std::chrono::steady_clock::now()) {
+    std::shared_ptr<Network::network_context_t> ctx, const std::string &sprite)
+    : _ctx(std::move(ctx)), _lastPacketTime(std::chrono::steady_clock::now()),
+      _player_sprite(sprite) {
   _server = {host, port};
 
   _ctx->serverEndpoint =
@@ -75,13 +75,15 @@ void System::ClientNetworkSystem::init(Ecs::Registry &registry) {
   if (!_ctx->connected) {
     Network::Packet newClient;
     newClient.header.type = Network::NEW_CLIENT;
-    newClient.header.length = 0;
+    newClient.payload.assign(_player_sprite.begin(), _player_sprite.end());
+    newClient.header.length = static_cast<uint16_t>(newClient.payload.size());
 
     _adapter->sendReliable(_server, newClient);
     _ctx->connected = true;
 
     Logger::info("[Client] Connecting to server at " + _server.address + ":" +
-                 std::to_string(_server.port));
+                 std::to_string(_server.port) + " with sprite " +
+                 _player_sprite);
   } else {
     Logger::warn("[Client] Already connected, skipping NEW_CLIENT send");
   }
@@ -256,14 +258,19 @@ void System::ClientNetworkSystem::handleGameStart(const Network::Packet &pkt,
 
 void System::ClientNetworkSystem::handleServerSnapshot(
     const Network::Packet &pkt, const Network::endpoint_t &) {
-  if (pkt.payload.size() < 4)
+  if (pkt.payload.size() < 12)
     return;
 
-  Network::snapshot_t snap;
-  snap.timestamp = std::chrono::duration<double>(
-                       std::chrono::steady_clock::now() - _startTime)
-                       .count();
   size_t offset = 0;
+  uint64_t timestampInt =
+      Network::read_u64_le(pkt.payload.data(), pkt.payload.size(), offset);
+  offset += 8;
+  double serverTimestamp;
+  std::memcpy(&serverTimestamp, &timestampInt, sizeof(double));
+
+  Network::snapshot_t snap;
+  snap.timestamp = serverTimestamp;
+
   while (offset + 12 <= pkt.payload.size()) {
     uint32_t id =
         Network::read_u32_le(pkt.payload.data(), pkt.payload.size(), offset);
@@ -303,18 +310,30 @@ void System::ClientNetworkSystem::handleServerSnapshot(
     }
   }
 
+  if (!_timeSynced) {
+    _startTime =
+        std::chrono::steady_clock::now() -
+        std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+            std::chrono::duration<double>(serverTimestamp));
+    _timeSynced = true;
+    Logger::info("[Client] Time synced with server");
+  }
+
   _interpolator.addSnapshot(snap);
 }
 
 extern "C" std::shared_ptr<System::ISystem>
 createClientNetworkSystem(std::any params) {
   try {
-    auto t =
-        std::any_cast<std::tuple<std::string, unsigned short,
-                                 std::shared_ptr<Network::network_context_t>>>(
-            params);
-    return std::make_shared<System::ClientNetworkSystem>(
-        std::get<0>(t), std::get<1>(t), std::get<2>(t));
+    auto vec = std::any_cast<std::vector<std::any>>(params);
+    std::string host = std::any_cast<std::string>(vec[0]);
+    unsigned short port =
+        static_cast<unsigned short>(std::any_cast<int>(vec[1]));
+    auto ctx =
+        std::any_cast<std::shared_ptr<Network::network_context_t>>(vec[2]);
+    std::string sprite = std::any_cast<std::string>(vec[3]);
+    return std::make_shared<System::ClientNetworkSystem>(host, port, ctx,
+                                                         sprite);
   } catch (const std::exception &e) {
     Logger::error(
         std::string("[Factory]: Failed to create ClientNetworkSystem: ") +

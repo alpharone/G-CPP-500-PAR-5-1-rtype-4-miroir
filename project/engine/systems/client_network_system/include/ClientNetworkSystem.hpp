@@ -7,23 +7,25 @@
 
 #pragma once
 
-#include <memory>
-#include <mutex>
-#include <string>
-#include <unordered_map>
-
 #include "ISystem.hpp"
 #include "Logger.hpp"
 #include "NetworkContext.hpp"
 #include "ReliableLayerAdapter.hpp"
 #include "SnapshotInterpolator.hpp"
+#include <any>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace System {
 
 class ClientNetworkSystem : public ISystem {
 public:
   ClientNetworkSystem(const std::string &host, unsigned short port,
-                      std::shared_ptr<Network::network_context_t> ctx);
+                      std::shared_ptr<Network::network_context_t> ctx,
+                      const std::string &sprite);
   ~ClientNetworkSystem() override = default;
 
   void init(Ecs::Registry &registry) override;
@@ -63,6 +65,8 @@ private:
 
   std::atomic<bool> _initialized{false};
   std::mutex _mutex;
+  std::string _player_sprite;
+  bool _timeSynced{false};
 };
 
 } // namespace System

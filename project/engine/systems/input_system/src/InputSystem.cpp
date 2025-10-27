@@ -6,7 +6,6 @@
 */
 
 #include "InputSystem.hpp"
-
 #include "MessageType.hpp"
 
 System::InputSystem::InputSystem(
@@ -47,11 +46,10 @@ void System::InputSystem::update(Ecs::Registry &, double) {
 void System::InputSystem::shutdown() { Logger::info("[InputSystem] Shutdown"); }
 
 extern "C" std::shared_ptr<System::ISystem> createInputSystem(std::any params) {
-  std::shared_ptr<Network::network_context_t> ctx;
   try {
-    if (params.has_value()) {
-      ctx = std::any_cast<std::shared_ptr<Network::network_context_t>>(params);
-    }
+    auto vec = std::any_cast<std::vector<std::any>>(params);
+    auto ctx =
+        std::any_cast<std::shared_ptr<Network::network_context_t>>(vec[0]);
     return std::make_shared<System::InputSystem>(ctx);
   } catch (const std::exception &e) {
     Logger::error(std::string("[Factory]: Failed to create InputSystem: ") +

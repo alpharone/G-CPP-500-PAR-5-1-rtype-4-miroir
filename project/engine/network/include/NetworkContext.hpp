@@ -7,13 +7,12 @@
 
 #pragma once
 
-#include <asio.hpp>
-#include <memory>
-#include <queue>
-
 #include "Packets.hpp"
 #include "Registry.hpp"
 #include "ReliableLayerAdapter.hpp"
+#include <asio.hpp>
+#include <memory>
+#include <queue>
 
 namespace Network {
 

@@ -6,7 +6,6 @@
 */
 
 #include "SpriteManager.hpp"
-
 #include "Logger.hpp"
 
 SpriteManager::~SpriteManager() { unloadAll(); }

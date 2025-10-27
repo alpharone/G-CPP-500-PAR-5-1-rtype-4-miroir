@@ -5,12 +5,11 @@
 ** AnimationSystem.cpp
 */
 
-#include "AnimationSystem.hpp"
-
 #include <any>
 #include <sstream>
 
 #include "Animation.hpp"
+#include "AnimationSystem.hpp"
 #include "Drawable.hpp"
 #include "Logger.hpp"
 
@@ -72,8 +71,10 @@ void System::AnimationSystem::shutdown() {
     _spriteManager->unloadAll();
 }
 
-extern "C" std::shared_ptr<System::ISystem> createAnimationSystem(std::any) {
+extern "C" std::shared_ptr<System::ISystem>
+createAnimationSystem(std::any params) {
   try {
+    auto vec = std::any_cast<std::vector<std::any>>(params);
     return std::make_shared<System::AnimationSystem>();
   } catch (const std::exception &e) {
     Logger::error(std::string("[Factory] Failed to create AnimationSystem: ") +

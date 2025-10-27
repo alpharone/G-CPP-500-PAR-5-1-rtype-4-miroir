@@ -23,6 +23,15 @@ void System::RenderSystem::init(Ecs::Registry&)
     InitWindow(_width, _height, _title.c_str());
     SetTargetFPS(60);
     _spriteManager = std::make_unique<SpriteManager>();
+
+    for (int i = 0; i < 100; i++) {
+        star_t s;
+        s.x = GetRandomValue(0, _width);
+        s.y = GetRandomValue(0, _height);
+        s.size = GetRandomValue(1, 3);
+        s.speed = s.size * 0.5f;
+        _stars.push_back(s);
+    }
     _initialized = true;
     Logger::info("[RenderSystem] Initialized (" + std::to_string(_width) + "x" + std::to_string(_height) + ")");
 }
@@ -33,6 +42,12 @@ void System::RenderSystem::update(Ecs::Registry& registry, double)
         return;
     BeginDrawing();
     ClearBackground(BLACK);
+
+    for (auto &s : _stars) {
+        s.x -= s.speed;
+        if (s.x < 0) s.x = _width;
+        DrawCircle((int)s.x, (int)s.y, s.size, WHITE);
+    }
 
     auto &positions = registry.getComponents<Component::position_t>();
     auto &drawables = registry.getComponents<Component::drawable_t>();

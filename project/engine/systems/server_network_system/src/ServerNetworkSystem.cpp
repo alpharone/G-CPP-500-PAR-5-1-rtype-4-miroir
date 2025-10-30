@@ -107,12 +107,56 @@ void System::ServerNetworkSystem::handleNewClient(
     }
   }
 
-  Logger::info("[Server] Received NEW_CLIENT from " + key);
+  Logger::info("[Server] Received NEW_CLIENT from " + key +
+               " payload size: " + std::to_string(pkt.payload.size()));
 
-  std::string sprite(pkt.payload.begin(), pkt.payload.end());
-  Logger::info("[Server] Client sprite: " + sprite);
+  size_t offset = 0;
+  std::string sprite;
+  while (offset < pkt.payload.size() && pkt.payload[offset] != '\0') {
+    sprite += pkt.payload[offset];
+    offset++;
+  }
+  offset++;
 
-  auto joinResult = _rooms->joinAuto(from, sprite);
+  Logger::info("[Server] Parsed sprite: '" + sprite +
+               "' offset after sprite: " + std::to_string(offset));
+
+  if (offset + 24 > pkt.payload.size()) {
+    Logger::warn(
+        "[Server] Invalid NEW_CLIENT payload size: expected at least " +
+        std::to_string(offset + 24) + " but got " +
+        std::to_string(pkt.payload.size()));
+    return;
+  }
+
+  int frame_x = static_cast<int>(
+      Network::read_u32_le(pkt.payload.data(), pkt.payload.size(), offset));
+  offset += 4;
+  int frame_y = static_cast<int>(
+      Network::read_u32_le(pkt.payload.data(), pkt.payload.size(), offset));
+  offset += 4;
+  int frame_w = static_cast<int>(
+      Network::read_u32_le(pkt.payload.data(), pkt.payload.size(), offset));
+  offset += 4;
+  int frame_h = static_cast<int>(
+      Network::read_u32_le(pkt.payload.data(), pkt.payload.size(), offset));
+  offset += 4;
+  int frame_count = static_cast<int>(
+      Network::read_u32_le(pkt.payload.data(), pkt.payload.size(), offset));
+  offset += 4;
+  uint32_t frameTimeBits =
+      Network::read_u32_le(pkt.payload.data(), pkt.payload.size(), offset);
+  float frame_time;
+  std::memcpy(&frame_time, &frameTimeBits, sizeof(float));
+
+  Logger::info("[Server] Client sprite: " + sprite +
+               " animation config: " + std::to_string(frame_x) + "," +
+               std::to_string(frame_y) + " " + std::to_string(frame_w) + "x" +
+               std::to_string(frame_h) + " " + std::to_string(frame_count) +
+               " frames, " + std::to_string(frame_time) + "s");
+
+  auto joinResult = _rooms->joinAuto(from, sprite, frame_x, frame_y, frame_w,
+                                     frame_h, frame_count, frame_time);
   if (!joinResult.has_value()) {
     Logger::warn("[Server] Could not assign client to any room.");
     return;
@@ -143,6 +187,21 @@ void System::ServerNetworkSystem::handleNewClient(
     std::string sprite = existingClient.sprite;
     spawnExisting.payload.insert(spawnExisting.payload.end(), sprite.begin(),
                                  sprite.end());
+    spawnExisting.payload.push_back('\0');
+
+    Network::write_u32_le(spawnExisting.payload,
+                          static_cast<uint32_t>(existingClient.frame_x));
+    Network::write_u32_le(spawnExisting.payload,
+                          static_cast<uint32_t>(existingClient.frame_y));
+    Network::write_u32_le(spawnExisting.payload,
+                          static_cast<uint32_t>(existingClient.frame_w));
+    Network::write_u32_le(spawnExisting.payload,
+                          static_cast<uint32_t>(existingClient.frame_h));
+    Network::write_u32_le(spawnExisting.payload,
+                          static_cast<uint32_t>(existingClient.frame_count));
+    uint32_t frameTimeBits;
+    std::memcpy(&frameTimeBits, &existingClient.frame_time, sizeof(float));
+    Network::write_u32_le(spawnExisting.payload, frameTimeBits);
     spawnExisting.header.length =
         static_cast<uint16_t>(spawnExisting.payload.size());
     _adapter->sendReliable(from, spawnExisting);
@@ -161,6 +220,16 @@ void System::ServerNetworkSystem::handleNewClient(
   Network::write_u32_le(spawnNew.payload, y);
   spawnNew.payload.insert(spawnNew.payload.end(), newClientSprite.begin(),
                           newClientSprite.end());
+  spawnNew.payload.push_back('\0');
+
+  Network::write_u32_le(spawnNew.payload, static_cast<uint32_t>(frame_x));
+  Network::write_u32_le(spawnNew.payload, static_cast<uint32_t>(frame_y));
+  Network::write_u32_le(spawnNew.payload, static_cast<uint32_t>(frame_w));
+  Network::write_u32_le(spawnNew.payload, static_cast<uint32_t>(frame_h));
+  Network::write_u32_le(spawnNew.payload, static_cast<uint32_t>(frame_count));
+  uint32_t newFrameTimeBits;
+  std::memcpy(&newFrameTimeBits, &frame_time, sizeof(float));
+  Network::write_u32_le(spawnNew.payload, newFrameTimeBits);
   spawnNew.header.length = static_cast<uint16_t>(spawnNew.payload.size());
   for (auto &[existingId, existingClient] : room.clients) {
     if (existingId == clientId)

@@ -44,6 +44,12 @@ struct room_client_t {
   float lastSnapY{100};
   std::unordered_set<uint8_t> pressedKeys;
   std::string sprite;
+  int frame_x{0};
+  int frame_y{0};
+  int frame_w{0};
+  int frame_h{0};
+  int frame_count{0};
+  float frame_time{0.0f};
 };
 
 struct pending_input_t {

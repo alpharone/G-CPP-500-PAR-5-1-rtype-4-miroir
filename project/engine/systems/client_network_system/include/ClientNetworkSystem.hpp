@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include "ClientConfig.hpp"
 #include "ISystem.hpp"
 #include "Logger.hpp"
 #include "NetworkContext.hpp"
@@ -23,9 +24,7 @@ namespace System {
 
 class ClientNetworkSystem : public ISystem {
 public:
-  ClientNetworkSystem(const std::string &host, unsigned short port,
-                      std::shared_ptr<Network::network_context_t> ctx,
-                      const std::string &sprite);
+  ClientNetworkSystem(const ClientNetworkConfig &config);
   ~ClientNetworkSystem() override = default;
 
   void init(Ecs::Registry &registry) override;
@@ -66,6 +65,12 @@ private:
   std::atomic<bool> _initialized{false};
   std::mutex _mutex;
   std::string _player_sprite;
+  int _player_frame_w;
+  int _player_frame_h;
+  int _player_frame_count;
+  float _player_frame_time;
+  int _player_frame_x;
+  int _player_frame_y;
   bool _timeSynced{false};
 };
 

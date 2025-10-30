@@ -39,7 +39,9 @@ public:
 
   uint32_t createRoom();
   std::optional<std::pair<uint32_t, uint32_t>>
-  joinAuto(const endpoint_t &endpoint, const std::string &sprite);
+  joinAuto(const endpoint_t &endpoint, const std::string &sprite,
+           int frame_x = 0, int frame_y = 0, int frame_w = 33, int frame_h = 17,
+           int frame_count = 4, float frame_time = 0.2f);
   void leave(uint32_t roomId, uint32_t clientId);
   std::vector<uint32_t> listRooms();
 

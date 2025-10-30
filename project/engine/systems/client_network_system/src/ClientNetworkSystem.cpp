@@ -6,22 +6,28 @@
 */
 
 #include "ClientNetworkSystem.hpp"
+#include "Animation.hpp"
 #include "AsioNetworkTransport.hpp"
+#include "ClientConfig.hpp"
 #include "DefaultMessageSerializer.hpp"
 #include "Drawable.hpp"
 #include "MessageType.hpp"
 #include "Position.hpp"
 #include "Utils.hpp"
+#include <cstdlib>
 
 System::ClientNetworkSystem::ClientNetworkSystem(
-    const std::string &host, unsigned short port,
-    std::shared_ptr<Network::network_context_t> ctx, const std::string &sprite)
-    : _ctx(std::move(ctx)), _lastPacketTime(std::chrono::steady_clock::now()),
-      _player_sprite(sprite) {
-  _server = {host, port};
+    const ClientNetworkConfig &config)
+    : _ctx(std::move(config.ctx)),
+      _lastPacketTime(std::chrono::steady_clock::now()),
+      _player_sprite(config.sprite), _player_frame_w(config.frameW),
+      _player_frame_h(config.frameH), _player_frame_count(config.frameCount),
+      _player_frame_time(config.frameTime), _player_frame_x(config.frameX),
+      _player_frame_y(config.frameY) {
+  _server = {config.host, config.port};
 
   _ctx->serverEndpoint =
-      asio::ip::udp::endpoint(asio::ip::make_address(host), port);
+      asio::ip::udp::endpoint(asio::ip::make_address(config.host), config.port);
 }
 
 void System::ClientNetworkSystem::init(Ecs::Registry &registry) {
@@ -75,7 +81,24 @@ void System::ClientNetworkSystem::init(Ecs::Registry &registry) {
   if (!_ctx->connected) {
     Network::Packet newClient;
     newClient.header.type = Network::NEW_CLIENT;
+
     newClient.payload.assign(_player_sprite.begin(), _player_sprite.end());
+    newClient.payload.push_back('\0');
+
+    Network::write_u32_le(newClient.payload,
+                          static_cast<uint32_t>(_player_frame_x));
+    Network::write_u32_le(newClient.payload,
+                          static_cast<uint32_t>(_player_frame_y));
+    Network::write_u32_le(newClient.payload,
+                          static_cast<uint32_t>(_player_frame_w));
+    Network::write_u32_le(newClient.payload,
+                          static_cast<uint32_t>(_player_frame_h));
+    Network::write_u32_le(newClient.payload,
+                          static_cast<uint32_t>(_player_frame_count));
+    uint32_t frameTimeBits;
+    std::memcpy(&frameTimeBits, &_player_frame_time, sizeof(float));
+    Network::write_u32_le(newClient.payload, frameTimeBits);
+
     newClient.header.length = static_cast<uint16_t>(newClient.payload.size());
 
     _adapter->sendReliable(_server, newClient);
@@ -83,7 +106,7 @@ void System::ClientNetworkSystem::init(Ecs::Registry &registry) {
 
     Logger::info("[Client] Connecting to server at " + _server.address + ":" +
                  std::to_string(_server.port) + " with sprite " +
-                 _player_sprite);
+                 _player_sprite + " and animation config");
   } else {
     Logger::warn("[Client] Already connected, skipping NEW_CLIENT send");
   }
@@ -206,7 +229,15 @@ void System::ClientNetworkSystem::handleEntitySpawn(
       Network::read_u32_le(pkt.payload.data(), pkt.payload.size(), 0);
   uint32_t x = Network::read_u32_le(pkt.payload.data(), pkt.payload.size(), 4);
   uint32_t y = Network::read_u32_le(pkt.payload.data(), pkt.payload.size(), 8);
-  std::string spriteName(pkt.payload.begin() + 12, pkt.payload.end());
+
+  size_t spriteStart = 12;
+  size_t spriteEnd = spriteStart;
+  while (spriteEnd < pkt.payload.size() && pkt.payload[spriteEnd] != '\0') {
+    spriteEnd++;
+  }
+  std::string spriteName(pkt.payload.begin() + spriteStart,
+                         pkt.payload.begin() + spriteEnd);
+  size_t offset = spriteEnd + 1;
 
   auto &registry = *_ctx->registry;
   auto e = registry.spawnEntity();
@@ -214,6 +245,48 @@ void System::ClientNetworkSystem::handleEntitySpawn(
       e, Component::position_t{static_cast<float>(x), static_cast<float>(y)});
   registry.emplaceComponent<Component::drawable_t>(
       e, Component::drawable_t(spriteName));
+
+  if (offset + 24 <= pkt.payload.size()) {
+    int frame_x = static_cast<int>(
+        Network::read_u32_le(pkt.payload.data(), pkt.payload.size(), offset));
+    offset += 4;
+    int frame_y = static_cast<int>(
+        Network::read_u32_le(pkt.payload.data(), pkt.payload.size(), offset));
+    offset += 4;
+    int frame_w = static_cast<int>(
+        Network::read_u32_le(pkt.payload.data(), pkt.payload.size(), offset));
+    offset += 4;
+    int frame_h = static_cast<int>(
+        Network::read_u32_le(pkt.payload.data(), pkt.payload.size(), offset));
+    offset += 4;
+    int frame_count = static_cast<int>(
+        Network::read_u32_le(pkt.payload.data(), pkt.payload.size(), offset));
+    offset += 4;
+    uint32_t frameTimeBits =
+        Network::read_u32_le(pkt.payload.data(), pkt.payload.size(), offset);
+    float frame_time;
+    std::memcpy(&frame_time, &frameTimeBits, sizeof(float));
+
+    int fps = static_cast<int>(1.0f / frame_time);
+    Component::animation_t playerAnim(frame_w, frame_h, frame_count, fps, true,
+                                      frame_x, frame_y, "player");
+    registry.emplaceComponent<Component::animation_t>(e, playerAnim);
+    Logger::info("[Client] Applied received animation config to entity " +
+                 std::to_string(static_cast<size_t>(e)) + ": " +
+                 std::to_string(frame_x) + "," + std::to_string(frame_y) + " " +
+                 std::to_string(frame_w) + "x" + std::to_string(frame_h) + " " +
+                 std::to_string(frame_count) + " frames, " +
+                 std::to_string(frame_time) + "s");
+  } else {
+    int fps = static_cast<int>(1.0f / _player_frame_time);
+    Component::animation_t playerAnim(
+        _player_frame_w, _player_frame_h, _player_frame_count, fps, true,
+        _player_frame_x, _player_frame_y, "player");
+    registry.emplaceComponent<Component::animation_t>(e, playerAnim);
+    Logger::info("[Client] Applied fallback animation to entity " +
+                 std::to_string(static_cast<size_t>(e)) +
+                 " (no animation data received)");
+  }
 
   _entityMap[clientId] = e;
 
@@ -326,14 +399,19 @@ extern "C" std::shared_ptr<System::ISystem>
 createClientNetworkSystem(std::any params) {
   try {
     auto vec = std::any_cast<std::vector<std::any>>(params);
-    std::string host = std::any_cast<std::string>(vec[0]);
-    unsigned short port =
-        static_cast<unsigned short>(std::any_cast<int>(vec[1]));
-    auto ctx =
+    System::ClientNetworkConfig config;
+    config.host = std::any_cast<std::string>(vec[0]);
+    config.port = static_cast<unsigned short>(std::any_cast<int>(vec[1]));
+    config.ctx =
         std::any_cast<std::shared_ptr<Network::network_context_t>>(vec[2]);
-    std::string sprite = std::any_cast<std::string>(vec[3]);
-    return std::make_shared<System::ClientNetworkSystem>(host, port, ctx,
-                                                         sprite);
+    config.sprite = std::any_cast<std::string>(vec[3]);
+    config.frameW = std::any_cast<int>(vec[4]);
+    config.frameH = std::any_cast<int>(vec[5]);
+    config.frameCount = std::any_cast<int>(vec[6]);
+    config.frameTime = std::any_cast<float>(vec[7]);
+    config.frameX = std::any_cast<int>(vec[8]);
+    config.frameY = std::any_cast<int>(vec[9]);
+    return std::make_shared<System::ClientNetworkSystem>(config);
   } catch (const std::exception &e) {
     Logger::error(
         std::string("[Factory]: Failed to create ClientNetworkSystem: ") +

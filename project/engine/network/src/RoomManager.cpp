@@ -36,7 +36,9 @@ uint32_t RoomManager::createRoom() {
 }
 
 std::optional<std::pair<uint32_t, uint32_t>>
-RoomManager::joinAuto(const endpoint_t &endpoint, const std::string &sprite) {
+RoomManager::joinAuto(const endpoint_t &endpoint, const std::string &sprite,
+                      int frame_x, int frame_y, int frame_w, int frame_h,
+                      int frame_count, float frame_time) {
   std::lock_guard<std::mutex> lock(_roomsMtx);
 
   for (auto &[id, room] : _rooms) {
@@ -47,12 +49,19 @@ RoomManager::joinAuto(const endpoint_t &endpoint, const std::string &sprite) {
       rc.posX = _start_x;
       rc.posY = _start_y;
       rc.sprite = sprite;
+      rc.frame_x = frame_x;
+      rc.frame_y = frame_y;
+      rc.frame_w = frame_w;
+      rc.frame_h = frame_h;
+      rc.frame_count = frame_count;
+      rc.frame_time = frame_time;
       room.clients.emplace(cid, std::move(rc));
 
       Network::Packet accept;
       accept.header.type = Network::ACCEPT_CLIENT;
       accept.header.seq = 0;
       std::vector<uint8_t> pay;
+      Network::write_u32_le(pay, id);
       Network::write_u32_le(pay, cid);
       accept.payload = std::move(pay);
       accept.header.length = static_cast<uint16_t>(accept.payload.size());
@@ -66,7 +75,15 @@ RoomManager::joinAuto(const endpoint_t &endpoint, const std::string &sprite) {
   room_t newRoom{newRoomId};
   uint32_t cid = newRoom.nextClientId += 1;
   room_client_t rc{cid, endpoint, false, steady_clock::now()};
+  rc.posX = _start_x;
+  rc.posY = _start_y;
   rc.sprite = sprite;
+  rc.frame_x = frame_x;
+  rc.frame_y = frame_y;
+  rc.frame_w = frame_w;
+  rc.frame_h = frame_h;
+  rc.frame_count = frame_count;
+  rc.frame_time = frame_time;
   newRoom.clients.emplace(cid, std::move(rc));
 
   Network::Packet accept;

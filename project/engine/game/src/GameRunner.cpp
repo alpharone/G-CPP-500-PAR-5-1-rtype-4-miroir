@@ -11,6 +11,8 @@
 #include <fstream>
 #include <iostream>
 #include <nlohmann/json.hpp>
+#include <sstream>
+#include <thread>
 
 GameRunner::GameRunner(const std::string &configFile) {
   loadConfig(configFile);
@@ -36,12 +38,16 @@ void GameRunner::loadConfig(const std::string &configFile) {
     return;
   }
 
+  fullConfig = cfg;
+
   if (cfg.contains("globals")) {
     for (auto &[key, value] : cfg["globals"].items()) {
       if (value.is_string()) {
         globals[key] = value.get<std::string>();
       } else if (value.is_number_integer()) {
         globals[key] = value.get<int>();
+      } else if (value.is_number_float()) {
+        globals[key] = value.get<float>();
       }
     }
   }
@@ -66,10 +72,10 @@ void GameRunner::initSystems() {
 
     std::vector<std::any> params;
     for (const auto &paramKey : sc.params) {
-      if (globals.count(paramKey)) {
-        params.push_back(globals[paramKey]);
-      } else {
-        std::cerr << "Warning: param " << paramKey << " not found in globals"
+      try {
+        params.push_back(resolveParameter(paramKey));
+      } catch (const std::exception &e) {
+        std::cerr << "Warning: param " << paramKey << " not found: " << e.what()
                   << std::endl;
       }
     }
@@ -80,6 +86,34 @@ void GameRunner::initSystems() {
   }
 
   manager.initAll(registry);
+}
+
+std::any GameRunner::resolveParameter(const std::string &paramKey) {
+  if (globals.count(paramKey)) {
+    return globals[paramKey];
+  }
+
+  nlohmann::json current = fullConfig;
+  std::stringstream ss(paramKey);
+  std::string part;
+  while (std::getline(ss, part, '.')) {
+    if (!current.contains(part)) {
+      break;
+    }
+    current = current[part];
+  }
+
+  if (ss.eof()) {
+    if (current.is_string()) {
+      return current.get<std::string>();
+    } else if (current.is_number_integer()) {
+      return current.get<int>();
+    } else if (current.is_number_float()) {
+      return current.get<float>();
+    }
+  }
+
+  throw std::runtime_error("Parameter not found: " + paramKey);
 }
 
 void GameRunner::applyConfig() {}

@@ -34,6 +34,7 @@ private:
   System::SystemCatalog catalog;
 
   std::unordered_map<std::string, std::any> globals;
+  nlohmann::json fullConfig;
 
   struct SystemConfig {
     std::string name;
@@ -43,5 +44,5 @@ private:
   };
   std::vector<SystemConfig> systemsToLoad;
 
-  std::unordered_map<std::string, std::any> configData;
+  std::any resolveParameter(const std::string &paramKey);
 };

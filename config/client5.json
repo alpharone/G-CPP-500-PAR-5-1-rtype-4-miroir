@@ -30,7 +30,7 @@
   "player": {
     "sprite_sheet": "assets/sprites/r-typesheet42.gif",
     "frame_x": 0,
-    "frame_y": 17,
+    "frame_y": 69,
     "frame_w": 33,
     "frame_h": 17,
     "animation": { "frame_count": 4, "frame_time": 0.2 },

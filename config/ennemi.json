@@ -28,12 +28,12 @@
   "globals": {
   },
   "player": {
-    "sprite_sheet": "assets/sprites/r-typesheet42.gif",
+    "sprite_sheet": "assets/sprites/r-typesheet3.gif",
     "frame_x": 0,
-    "frame_y": 17,
-    "frame_w": 33,
-    "frame_h": 17,
-    "animation": { "frame_count": 4, "frame_time": 0.2 },
+    "frame_y": 0,
+    "frame_w": 17,
+    "frame_h": 18,
+    "animation": { "frame_count": 12, "frame_time": 0.2 },
     "speed": 20,
     "health": 100
   },

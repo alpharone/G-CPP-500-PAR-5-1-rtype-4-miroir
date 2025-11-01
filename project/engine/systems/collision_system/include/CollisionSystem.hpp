@@ -10,27 +10,32 @@
 #include "Position.hpp"
 #include "Velocity.hpp"
 #include "Registry.hpp"
-#include "WindowSize.hpp"
+#include "WIndowSize.hpp"
 #include "Logger.hpp"
+#include "Collision.hpp"
+#include "Healt.hpp"
 
 namespace System {
 
-struct hashmap
-{
-    size_t operator()(std::pair<int, int> p) noexcept{
-        return std::hash<int>()(p.first) ^ (std::hash<int>()(p.second)) << 1;
+struct hashmap {
+    size_t operator()(const std::pair<int,int>& p) const noexcept {
+        return std::hash<int>()(p.first) ^ (std::hash<int>()(p.second) << 1);
     }
 };
 
-
 class CollisionSystem : public ISystem {
     public:
-    CollisionSystem() = default;
-    ~CollisionSystem() = default;
-    void update(Registry&r, float dt);
-    bool check_collision(position_t p_e1, windowSize_t w_e1, position_t p_e2, windowSize_t w_e2);
-    void blockPlayer(position_t& player_pos, Velocity& player_vel, const position_t& wall_pos, const collision_t& wall_col);
+        CollisionSystem() = default;
+        ~CollisionSystem() override= default;
 
+        void init(Ecs::Registry& registry) override {};
+        void update(Ecs::Registry& r, double dt) override;
+        bool check_collision(const Component::position_t& p_e1, const Component::collision_t& w_e1,
+                             const Component::position_t& p_e2, const Component::collision_t& w_e2);
+        void collision(Ecs::Registry& r, size_t e1, size_t e2);
+        void blockPlayer(Component::position_t& player_pos, Component::velocity_t& player_vel,
+                         const Component::position_t& wall_pos, const Component::collision_t& wall_col);
+        void shutdown() override {};
     private:
 };
 }

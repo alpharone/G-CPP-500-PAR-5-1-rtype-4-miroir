@@ -21,9 +21,9 @@ void System::IaSystem::init(Ecs::Registry& registry)
             spawnY = s.amplitude;
     }
 
-    registry.emplaceComponent<position_t_t>(_entity, position_t_t{spawnX, spawnY});
-    registry.emplaceComponent<velocity_t>(_entity, velocity_t{0, 0});
-    registry.emplaceComponent<healt_t>(_entity, healt_t{10});
+    registry.emplaceComponent<Component::position_t>(_entity, Component::position_t{spawnX, spawnY});
+    registry.emplaceComponent<Component::velocity_t>(_entity, Component::velocity_t{0, 0});
+    registry.emplaceComponent<Component::healt_t>(_entity, Component::healt_t{10});
 }
 
 void System::IaSystem::shutdown()
@@ -126,16 +126,16 @@ void System::IaSystem::executeState(Ecs::Registry& reg, State& s, double dt)
 
 bool System::IaSystem::checkCondition(Ecs::Registry& reg, State& s)
 {
-    auto& posOpt = reg.getComponents<position_t>()[_entity];
-    auto& playerOpt = reg.getComponents<position_t>()[_target];
-    auto& hpOpt = reg.getComponents<healt_t>()[_entity];
+    auto& posOpt = reg.getComponents<Component::position_t>()[_entity];
+    auto& playerOpt = reg.getComponents<Component::position_t>()[_target];
+    auto& hpOpt = reg.getComponents<Component::healt_t>()[_entity];
 
     if (!posOpt.has_value() || !playerOpt.has_value() || !hpOpt.has_value())
         return false;
 
-    const position_t& pos = *posOpt;
-    const position_t& player = *playerOpt;
-    const healt_t& hp = *hpOpt;
+    const Component::position_t& pos = *posOpt;
+    const Component::position_t& player = *playerOpt;
+    const Component::healt_t& hp = *hpOpt;
 
     float dx = player.x - pos.x;
     float dy = player.y - pos.y;
@@ -151,11 +151,11 @@ bool System::IaSystem::checkCondition(Ecs::Registry& reg, State& s)
     }
     if (s.condition.find("hp<") != std::string::npos) {
         int val = std::stoi(s.condition.substr(3));
-        return hp.hp < val;
+        return hp.healt < val;
     }
     if (s.condition.find("hp>") != std::string::npos) {
         int val = std::stoi(s.condition.substr(3));
-        return hp.hp > val;
+        return hp.healt > val;
     }
 
     return false;
@@ -163,8 +163,8 @@ bool System::IaSystem::checkCondition(Ecs::Registry& reg, State& s)
 
 void System::IaSystem::moveChaser(Ecs::Registry& reg, double dt)
 {
-    auto& posOpt = reg.getComponents<position_t>()[_entity];
-    auto& velOpt = reg.getComponents<velocity_t>()[_entity];
+    auto& posOpt = reg.getComponents<Component::position_t>()[_entity];
+    auto& velOpt = reg.getComponents<Component::velocity_t>()[_entity];
     if (!posOpt || !velOpt)
         return;
 
@@ -177,7 +177,7 @@ void System::IaSystem::moveChaser(Ecs::Registry& reg, double dt)
 
 void System::IaSystem::moveSine(Ecs::Registry& reg, double dt)
 {
-    auto& posOpt = reg.getComponents<position_t>()[_entity];
+    auto& posOpt = reg.getComponents<Component::position_t>()[_entity];
     if (!posOpt)
         return;
     auto& pos = *posOpt;
@@ -188,7 +188,7 @@ void System::IaSystem::moveSine(Ecs::Registry& reg, double dt)
 
 void System::IaSystem::moveZigzag(Ecs::Registry& reg, double dt)
 {
-    auto& posOpt = reg.getComponents<position_t>()[_entity];
+    auto& posOpt = reg.getComponents<Component::position_t>()[_entity];
     if (!posOpt)
         return;
     auto& pos = *posOpt;
@@ -199,8 +199,8 @@ void System::IaSystem::moveZigzag(Ecs::Registry& reg, double dt)
 
 void System::IaSystem::moveCharge(Ecs::Registry& reg, double dt)
 {
-    auto& posOpt = reg.getComponents<position_t>()[_entity];
-    auto& playerOpt = reg.getComponents<position_t>()[_target];
+    auto& posOpt = reg.getComponents<Component::position_t>()[_entity];
+    auto& playerOpt = reg.getComponents<Component::position_t>()[_target];
     if (!posOpt || !playerOpt)
         return;
 
@@ -222,14 +222,14 @@ void System::IaSystem::shootDirect(Ecs::Registry& reg)
         return;
     _shootCooldowns["Direct"] = 0.5f;
 
-    auto& posOpt = reg.getComponents<position_t>()[_entity];
+    auto& posOpt = reg.getComponents<Component::position_t>()[_entity];
     if (!posOpt)
         return;
     auto& pos = *posOpt;
 
     Ecs::Entity bullet = reg.spawnEntity();
-    reg.emplaceComponent<position_t>(bullet, position_t{pos.x, pos.y});
-    reg.emplaceComponent<velocity_t>(bullet, velocity_t{300.f, 0.f});
+    reg.emplaceComponent<Component::position_t>(bullet, Component::position_t{pos.x, pos.y});
+    reg.emplaceComponent<Component::velocity_t>(bullet, Component::velocity_t{300.f, 0.f});
 }
 
 void System::IaSystem::shootHoming(Ecs::Registry& reg)
@@ -238,8 +238,8 @@ void System::IaSystem::shootHoming(Ecs::Registry& reg)
         return;
     _shootCooldowns["Homing"] = 1.f;
 
-    auto& posOpt = reg.getComponents<position_t>()[_entity];
-    auto& playerOpt = reg.getComponents<position_t>()[_target];
+    auto& posOpt = reg.getComponents<Component::position_t>()[_entity];
+    auto& playerOpt = reg.getComponents<Component::position_t>()[_target];
     if (!posOpt || !playerOpt)
         return;
 
@@ -255,8 +255,8 @@ void System::IaSystem::shootHoming(Ecs::Registry& reg)
     dy /= len;
 
     Ecs::Entity bullet = reg.spawnEntity();
-    reg.emplaceComponent<position_t>(bullet, position_t{pos.x, pos.y});
-    reg.emplaceComponent<velocity_t>(bullet, velocity_t{dx * 200.f, dy * 200.f});
+    reg.emplaceComponent<Component::position_t>(bullet, Component::position_t{pos.x, pos.y});
+    reg.emplaceComponent<Component::velocity_t>(bullet, Component::velocity_t{dx * 200.f, dy * 200.f});
 }
 
 void System::IaSystem::shootSpread(Ecs::Registry& reg)
@@ -265,7 +265,7 @@ void System::IaSystem::shootSpread(Ecs::Registry& reg)
         return;
     _shootCooldowns["Spread"] = 2.f;
 
-    auto& posOpt = reg.getComponents<position_t>()[_entity];
+    auto& posOpt = reg.getComponents<Component::position_t>()[_entity];
     if (!posOpt)
         return;
     auto& pos = *posOpt;
@@ -279,8 +279,8 @@ void System::IaSystem::shootSpread(Ecs::Registry& reg)
     for (int i = 0; i < count; ++i) {
         float angle = (base + i * step) * 3.14159265f / 180.f;
         Ecs::Entity bullet = reg.spawnEntity();
-        reg.emplaceComponent<position_t>(bullet, position_t{pos.x, pos.y});
-        reg.emplaceComponent<velocity_t>(bullet, velocity_t_t{
+        reg.emplaceComponent<Component::position_t>(bullet, Component::position_t{pos.x, pos.y});
+        reg.emplaceComponent<Component::velocity_t>(bullet, Component::velocity_t{
             std::cos(angle) * speed,
             std::sin(angle) * speed
         });

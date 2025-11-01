@@ -1,0 +1,5 @@
+if(EXISTS "/home/alpharone/tec3/oop/origine/G-CPP-500-PAR-5-1-rtype-4/project/engine/systems/sound_system/SoundSystemTest-b12d07c_tests.cmake")
+  include("/home/alpharone/tec3/oop/origine/G-CPP-500-PAR-5-1-rtype-4/project/engine/systems/sound_system/SoundSystemTest-b12d07c_tests.cmake")
+else()
+  add_test(SoundSystemTest_NOT_BUILT-b12d07c SoundSystemTest_NOT_BUILT-b12d07c)
+endif()

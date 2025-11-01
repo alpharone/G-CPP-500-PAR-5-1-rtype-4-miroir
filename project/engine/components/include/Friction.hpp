@@ -10,10 +10,10 @@
 namespace Component {
 
     struct friction_t {
-        int friction;
-
-        explicit friction_t(int _friction) noexcept :
-        friction(_friction) {}
+    public: 
+        explicit friction_t(float _drag = 0.1f) noexcept : drag(_drag) {}
+    
+        float drag = 0.1f;
     };
 
 }

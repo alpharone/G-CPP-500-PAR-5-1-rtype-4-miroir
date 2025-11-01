@@ -1,0 +1,2 @@
+/usr/bin/ar qc libnetwork.a CMakeFiles/network.dir/src/Packets.cpp.o CMakeFiles/network.dir/src/ReliableChannel.cpp.o CMakeFiles/network.dir/src/Utils.cpp.o CMakeFiles/network.dir/src/RoomManager.cpp.o CMakeFiles/network.dir/src/AsioNetworkTransport.cpp.o CMakeFiles/network.dir/src/ReliableLayerAdapter.cpp.o CMakeFiles/network.dir/src/NetworkContext.cpp.o CMakeFiles/network.dir/src/DefaultMessageSerializer.cpp.o CMakeFiles/network.dir/src/SnapshotInterpolator.cpp.o
+/usr/bin/ranlib libnetwork.a

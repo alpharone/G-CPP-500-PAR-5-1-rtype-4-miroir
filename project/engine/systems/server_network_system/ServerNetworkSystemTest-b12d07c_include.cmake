@@ -1,0 +1,5 @@
+if(EXISTS "/home/alpharone/tec3/oop/origine/G-CPP-500-PAR-5-1-rtype-4/project/engine/systems/server_network_system/ServerNetworkSystemTest-b12d07c_tests.cmake")
+  include("/home/alpharone/tec3/oop/origine/G-CPP-500-PAR-5-1-rtype-4/project/engine/systems/server_network_system/ServerNetworkSystemTest-b12d07c_tests.cmake")
+else()
+  add_test(ServerNetworkSystemTest_NOT_BUILT-b12d07c ServerNetworkSystemTest_NOT_BUILT-b12d07c)
+endif()

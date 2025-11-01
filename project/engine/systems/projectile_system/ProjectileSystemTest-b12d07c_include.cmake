@@ -1,0 +1,5 @@
+if(EXISTS "/home/alpharone/tec3/oop/origine/G-CPP-500-PAR-5-1-rtype-4/project/engine/systems/projectile_system/ProjectileSystemTest-b12d07c_tests.cmake")
+  include("/home/alpharone/tec3/oop/origine/G-CPP-500-PAR-5-1-rtype-4/project/engine/systems/projectile_system/ProjectileSystemTest-b12d07c_tests.cmake")
+else()
+  add_test(ProjectileSystemTest_NOT_BUILT-b12d07c ProjectileSystemTest_NOT_BUILT-b12d07c)
+endif()

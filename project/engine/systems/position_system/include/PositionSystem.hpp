@@ -20,8 +20,10 @@ namespace System {
 class PositionSystem : public ISystem {
     public:
     PositionSystem() = default;
-    ~PositionSystem() = default;
-    void update(Registry& r, float dt);
+    ~PositionSystem() override = default;
+    void init(Ecs::Registry& registry) override;
+    void update(Ecs::Registry& registry, double dt);
+    void shutdown() override;
     private:
 };
 }

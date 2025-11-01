@@ -7,7 +7,7 @@
 #include "ISystem.hpp"
 #include "Position.hpp"
 #include "Velocity.hpp"
-//#include "Health.hpp"
+#include "Healt.hpp"
 #include "Registry.hpp"
 
 // struct Position { float x = 0.f, y = 0.f; };

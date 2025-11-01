@@ -12,15 +12,19 @@
 #include "Registry.hpp"
 #include "Friction.hpp"
 #include "Logger.hpp"
+#include "Gravity.hpp"
 
 
 namespace System {
 
 class PhysicsSystem : public ISystem {
     public:
-    PhysicsSystem() = default;
-    ~PhysicsSystem() = default;
-    void update(Registry& r, float dt);
+        PhysicsSystem() = default;
+        ~PhysicsSystem() override = default;
+
+        void init(Ecs::Registry& registry) override;
+        void update(Ecs::Registry& registry, double dt);
+        void shutdown() override;
     private:
 };
 }

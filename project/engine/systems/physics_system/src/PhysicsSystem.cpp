@@ -2,12 +2,17 @@
 #include "Logger.hpp"
 #include <algorithm>
 
-void System::PhysicsSystem::update(Ecs::Registry& r, float dt)
+void System::PhysicsSystem::init(Ecs::Registry&)
 {
-    auto& positions = r.getComponents<Component::position_t>();
-    auto& velocities = r.getComponents<Component::velocity_t>();
-    auto& gravities = r.getComponents<Component::gravity_t>();
-    auto& frictions = r.getComponents<Component::friction_t>();
+    Logger::info("[PhysicsSystem] initialized");
+}
+
+void System::PhysicsSystem::update(Ecs::Registry& registry, double dt)
+{
+    auto& positions = registry.getComponents<Component::position_t>();
+    auto& velocities = registry.getComponents<Component::velocity_t>();
+    auto& gravities = registry.getComponents<Component::gravity_t>();
+    auto& frictions = registry.getComponents<Component::friction_t>();
 
     for (size_t i = 0; i < positions.size(); ++i) {
         if (!positions[i].has_value() || !velocities[i].has_value())
@@ -33,6 +38,12 @@ void System::PhysicsSystem::update(Ecs::Registry& r, float dt)
         pos.y = std::clamp(pos.y, 0.0f, 1080.0f);
     }
 }
+
+void System::PhysicsSystem::shutdown()
+{
+    Logger::info("[PhysicsSystem] shutdown complete");
+}
+
 
 extern "C" std::shared_ptr<System::ISystem> createInputSystem(std::any params)
 {

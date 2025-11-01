@@ -1,0 +1,5 @@
+if(EXISTS "/home/alpharone/tec3/oop/origine/G-CPP-500-PAR-5-1-rtype-4/project/engine/systems/position_system/PositionSystemTest-b12d07c_tests.cmake")
+  include("/home/alpharone/tec3/oop/origine/G-CPP-500-PAR-5-1-rtype-4/project/engine/systems/position_system/PositionSystemTest-b12d07c_tests.cmake")
+else()
+  add_test(PositionSystemTest_NOT_BUILT-b12d07c PositionSystemTest_NOT_BUILT-b12d07c)
+endif()

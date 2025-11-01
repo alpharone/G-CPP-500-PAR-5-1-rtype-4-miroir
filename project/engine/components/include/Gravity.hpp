@@ -2,18 +2,17 @@
 ** EPITECH PROJECT, 2025
 ** repo
 ** File description:
-** Healt
+** gravity
 */
 
 #pragma once
 
 namespace Component {
-
+    
     struct gravity_t {
-        int gravity;
+    public:
+        explicit gravity_t(float _strength = 9.81f) noexcept : strength(_strength) {}
 
-        explicit gravity_t(int _gravity=0) noexcept :
-        gravity(_gravity) {}
+        float strength = 9.81f;
     };
-
 }

@@ -1,0 +1,16 @@
+name: Sync from Epitech
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: self-hosted
+    steps:
+      - name: Mirror clone
+        run: |
+          git clone --mirror https://github.com/EpitechPGE3-2025/G-CPP-500-PAR-5-1-rtype-4.git temp.git
+          cd temp.git
+          git push --mirror https://github.com/alpharone/G-CPP-500-PAR-5-1-rtype-4-miroir.git

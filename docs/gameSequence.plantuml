@@ -1,44 +1,48 @@
 @startuml GameSequence
 
 actor Player as C
-participant "ClientApp\n(NetworkClient)" as Client
-participant "Server\n(LobbyManager)" as Server
-participant "Room\n(GameInstance)" as Room
+participant "Client\n(ClientNetworkSystem)" as Client
+participant "Server\n(ServerNetworkSystem)" as Server
+participant "RoomManager" as RoomMgr
 participant "Registry+Systems" as ECS
 
 == Connexion ==
-C -> Client : connect(serverAddr)
-Client -> Server : NEW_CLIENT
-Server -> Client : ACCEPT_CLIENT(clientId)
+C -> Client : connect(serverAddr + port)
+Client -> Server : NEW_CLIENT (sprite, frame dimensions)
+Server -> RoomMgr : joinAuto(endpoint, sprite params)
+RoomMgr -> RoomMgr : create or join room, assign clientId
+Server -> Client : ACCEPT_CLIENT(roomId, clientId)
 
-== Lobby ==
-C -> Client : mark ready
-Client -> Server : PLAYER_READY
-Server -> Room : addPlayer(clientId)
+Server -> Client : ENTITY_SPAWN(player)
+Server -> Client : ENTITY_SPAWN(other players)
 
-== Lancement ==
-Server -> Client : GAME_START
-Client -> Client : init local Registry
+note right : Game starts immediately after spawn
 
-== Boucle de jeu ==
-loop chaque tick (60Hz côté serveur)
+== Game loop ==
+loop chaque tick (~120Hz côté serveur)
   C -> Client : input (move/shoot)
-  Client -> Server : CLIENT_INPUT
-  Server -> Room : applyInput(clientId, Input)
-  Room -> ECS : update Systems
-  ECS -> ECS : update AI / Physics / Collision
-  Room -> Server : snapshot(world state)
-  Server -> Client : SERVER_SNAPSHOT
-  Client -> ECS : apply snapshot
-  Client -> Client : local prediction & render
+  Client -> Server : CLIENT_INPUT(bitmask switch)
+  Server -> RoomMgr : notify packet
+  RoomMgr -> RoomMgr : update client.posX/Y from input
+  
+  RoomMgr -> Server : tick(dt) / apply movement
+  Server -> ECS : updateAll(dt)
+  ECS -> ECS : update AISystem (spawn enemies)
+  ECS -> ECS : update serverside PositionSystem (move entities)
+  ECS -> ECS : update CollisionSystem (AABB broad-phase, check overlaps, damage/health)
+  ECS -> ECS : update AnimationSystem
+  
+  Server -> Server : updateSnapshotsWithEntities -> collect pos from Registry
+  Server -> RoomMgr : collectOutgoing -> get snapshots
+  Server -> Client : SERVER_SNAPSHOT(player/enemy positions)
+  Client -> Client : set entity positions from snapshot
+  Client -> ECS : update RenderSystem (render with pos)
 end
 
-== Evénements ==
-Room -> Server : GAME_EVENT(explosion, score, etc.)
-Server -> Client : GAME_EVENT
-Client -> Client : show animation / sound
+== Evenements ==
+ECS -> ECS : on health=0, remove entity (enemy death or player game over)
+Server -> Client : ENTITY_DESPAWN(entityId) when health=0
 
-== Fin de partie ==
-Server -> Client : GAME_OVER (win/lose/draw)
-Client -> Client : afficher résultats
+== End game ==
+note right : No explicit GAME_OVER, player disconnect when health=0 or manual
 @enduml

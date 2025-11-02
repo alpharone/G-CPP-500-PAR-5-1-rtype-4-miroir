@@ -1,10 +1,12 @@
-add_library(ProjectileSystem SHARED
+set(TARGET ProjectileSystem)
+
+add_library(${TARGET} SHARED
     src/ProjectileSystem.cpp
 )
 
-set_target_properties(ProjectileSystem PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/plugins/systems)
+set_target_properties(${TARGET} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/plugins/systems)
 
-target_include_directories(ProjectileSystem
+target_include_directories(${TARGET}
     PUBLIC
         include
         ${CMAKE_SOURCE_DIR}/project/engine/systems/include
@@ -12,7 +14,7 @@ target_include_directories(ProjectileSystem
         ${CMAKE_SOURCE_DIR}/project/engine/components/include
 )
 
-target_link_libraries(ProjectileSystem
+target_link_libraries(${TARGET}
     PRIVATE
         ecs
         components
@@ -23,7 +25,7 @@ if(BUILD_TESTS)
     add_executable(ProjectileSystemTest
         tests/ProjectileSystemTest.cpp
     )
-    target_link_libraries(ProjectileSystemTest PRIVATE ProjectileSystem Catch2::Catch2WithMain)
+    target_link_libraries(ProjectileSystemTest PRIVATE ${TARGET} Catch2::Catch2WithMain)
     catch_discover_tests(ProjectileSystemTest)
 endif()
 

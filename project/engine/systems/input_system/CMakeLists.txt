@@ -1,10 +1,12 @@
-add_library(InputSystem SHARED
+set(TARGET InputSystem)
+
+add_library(${TARGET} SHARED
     src/InputSystem.cpp
 )
 
-set_target_properties(InputSystem PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/plugins/systems)
+set_target_properties(${TARGET} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/plugins/systems)
 
-target_include_directories(InputSystem
+target_include_directories(${TARGET}
     PUBLIC
         include
         ${CMAKE_SOURCE_DIR}/project/engine/systems/include
@@ -14,7 +16,7 @@ target_include_directories(InputSystem
         ${asio_SOURCE_DIR}/asio/include
 )
 
-target_link_libraries(InputSystem
+target_link_libraries(${TARGET}
     PRIVATE
         ecs
         components
@@ -27,7 +29,7 @@ if(BUILD_TESTS)
     add_executable(InputSystemTest
         tests/InputSystemTest.cpp
     )
-    target_link_libraries(InputSystemTest PRIVATE InputSystem Catch2::Catch2WithMain)
+    target_link_libraries(InputSystemTest PRIVATE ${TARGET} Catch2::Catch2WithMain)
     catch_discover_tests(InputSystemTest)
 endif()
 

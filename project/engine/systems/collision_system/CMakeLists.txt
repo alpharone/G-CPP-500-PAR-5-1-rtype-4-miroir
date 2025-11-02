@@ -1,10 +1,12 @@
-add_library(CollisionSystem SHARED
+set(TARGET CollisionSystem)
+
+add_library(${TARGET} SHARED
     src/CollisionSystem.cpp
 )
 
-set_target_properties(CollisionSystem PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/plugins/systems)
+set_target_properties(${TARGET} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/plugins/systems)
 
-target_include_directories(CollisionSystem
+target_include_directories(${TARGET}
     PUBLIC
         include
         ${CMAKE_SOURCE_DIR}/project/engine/systems/include
@@ -12,7 +14,7 @@ target_include_directories(CollisionSystem
         ${CMAKE_SOURCE_DIR}/project/engine/components/include
 )
 
-target_link_libraries(CollisionSystem
+target_link_libraries(${TARGET}
     PRIVATE
         ecs
         components
@@ -23,7 +25,7 @@ if(BUILD_TESTS)
     add_executable(CollisionSystemTest
         tests/CollisionSystemTest.cpp
     )
-    target_link_libraries(CollisionSystemTest PRIVATE CollisionSystem Catch2::Catch2WithMain)
+    target_link_libraries(CollisionSystemTest PRIVATE ${TARGET} Catch2::Catch2WithMain)
     catch_discover_tests(CollisionSystemTest)
 endif()
 

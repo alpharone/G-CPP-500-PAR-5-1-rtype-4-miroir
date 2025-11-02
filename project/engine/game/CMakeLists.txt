@@ -12,6 +12,7 @@ target_link_libraries(game
         systems
         tools
         components
+        ClientNetworkSystem
 )
 
 add_library(shared::game ALIAS game)

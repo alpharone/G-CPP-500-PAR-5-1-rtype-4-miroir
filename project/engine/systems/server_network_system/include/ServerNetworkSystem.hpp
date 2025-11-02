@@ -32,6 +32,8 @@ private:
                        const Network::endpoint_t &from);
   void handleDisconnect(const Network::Packet &pkt,
                         const Network::endpoint_t &from);
+  void checkForNewEntities(Ecs::Registry &registry);
+  void updateSnapshotsWithEntities(Ecs::Registry &registry);
 
   using HandlerFn =
       std::function<void(const Network::Packet &, const Network::endpoint_t &)>;
@@ -44,6 +46,10 @@ private:
 
   std::unordered_map<std::string, std::pair<uint32_t, uint32_t>> _knownClients;
   std::mutex _clientsMtx;
+
+  std::unordered_set<size_t> _trackedEntities;
+  std::unordered_map<size_t, std::pair<float, float>> _lastEntityPositions;
+  std::mutex _entitiesMtx;
 
   uint32_t _mainRoomId = 0;
   unsigned short _port;

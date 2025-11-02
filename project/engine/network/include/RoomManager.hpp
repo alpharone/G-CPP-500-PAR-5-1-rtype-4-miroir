@@ -27,21 +27,39 @@ template <> struct hash<Network::endpoint_t> {
 
 namespace Network {
 
+struct room_manager_config_t {
+  float start_x;
+  float start_y;
+  float speed;
+  int max_players;
+  int max_rooms;
+  int timeout;
+  int screen_width;
+  int screen_height;
+  double snapshot_interval;
+  std::chrono::steady_clock::time_point start_time;
+};
+
+struct client_join_info_t {
+  std::string sprite;
+  int frame_x;
+  int frame_y;
+  int frame_w;
+  int frame_h;
+  int frame_count;
+  float frame_time;
+};
+
 class RoomManager {
 public:
   using PacketVec = std::vector<Network::Packet>;
 
-  RoomManager(float start_x, float start_y, float speed, int max_players,
-              int max_rooms, int timeout, int screen_width, int screen_height,
-              double snapshot_interval,
-              std::chrono::steady_clock::time_point start_time);
+  RoomManager(const room_manager_config_t &config);
   ~RoomManager();
 
   uint32_t createRoom();
   std::optional<std::pair<uint32_t, uint32_t>>
-  joinAuto(const endpoint_t &endpoint, const std::string &sprite,
-           int frame_x = 0, int frame_y = 0, int frame_w = 33, int frame_h = 17,
-           int frame_count = 4, float frame_time = 0.2f);
+  joinAuto(const endpoint_t &endpoint, const client_join_info_t &info);
   void leave(uint32_t roomId, uint32_t clientId);
   std::vector<uint32_t> listRooms();
 
@@ -49,6 +67,10 @@ public:
   PacketVec collectOutgoing(uint32_t roomId);
   void onPacket(uint32_t roomId, const endpoint_t &from,
                 const Network::Packet &p);
+  void updateClientMovements(double dt);
+  void removeInactiveClients();
+  void sendSnapshots(double dt);
+
   void tick(double dt);
 
 private:

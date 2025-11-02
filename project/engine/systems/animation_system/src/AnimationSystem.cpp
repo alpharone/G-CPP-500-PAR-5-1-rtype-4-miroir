@@ -7,7 +7,6 @@
 
 #include <any>
 #include <sstream>
-
 #include "Animation.hpp"
 #include "AnimationSystem.hpp"
 #include "Drawable.hpp"

@@ -7,6 +7,7 @@
 
 #include "GameRunner.hpp"
 #include "Logger.hpp"
+#include "ClientConfig.hpp"
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -70,16 +71,44 @@ void GameRunner::initSystems() {
   for (const auto &sc : systemsToLoad) {
     catalog.registerSystem(sc.name, sc.lib, sc.factory);
 
-    std::vector<std::any> params;
-    for (const auto &paramKey : sc.params) {
-      try {
-        params.push_back(resolveParameter(paramKey));
-      } catch (const std::exception &e) {
-        std::cerr << "Warning: param " << paramKey << " not found: " << e.what()
-                  << std::endl;
+    std::any paramAny;
+    if (sc.factory == "createClientNetworkSystem") {
+      System::client_network_factory_params_t factoryParams;
+      if (sc.params.size() >= 10) {
+        factoryParams.host =
+            std::any_cast<std::string>(resolveParameter(sc.params[0]));
+        factoryParams.port = std::any_cast<int>(resolveParameter(sc.params[1]));
+        factoryParams.ctx =
+            std::any_cast<std::shared_ptr<Network::network_context_t>>(
+                resolveParameter(sc.params[2]));
+        factoryParams.sprite =
+            std::any_cast<std::string>(resolveParameter(sc.params[3]));
+        factoryParams.frameW =
+            std::any_cast<int>(resolveParameter(sc.params[4]));
+        factoryParams.frameH =
+            std::any_cast<int>(resolveParameter(sc.params[5]));
+        factoryParams.frameCount =
+            std::any_cast<int>(resolveParameter(sc.params[6]));
+        factoryParams.frameTime =
+            std::any_cast<float>(resolveParameter(sc.params[7]));
+        factoryParams.frameX =
+            std::any_cast<int>(resolveParameter(sc.params[8]));
+        factoryParams.frameY =
+            std::any_cast<int>(resolveParameter(sc.params[9]));
       }
+      paramAny = factoryParams;
+    } else {
+      std::vector<std::any> params;
+      for (const auto &paramKey : sc.params) {
+        try {
+          params.push_back(resolveParameter(paramKey));
+        } catch (const std::exception &e) {
+          std::cerr << "Warning: param " << paramKey
+                    << " not found: " << e.what() << std::endl;
+        }
+      }
+      paramAny = params;
     }
-    std::any paramAny = params;
 
     auto sys = catalog.loadSystem(sc.name, paramAny);
     manager.registerSystem(sys);
@@ -91,6 +120,10 @@ void GameRunner::initSystems() {
 std::any GameRunner::resolveParameter(const std::string &paramKey) {
   if (globals.count(paramKey)) {
     return globals[paramKey];
+  }
+
+  if (paramKey == "config") {
+    return fullConfig;
   }
 
   nlohmann::json current = fullConfig;

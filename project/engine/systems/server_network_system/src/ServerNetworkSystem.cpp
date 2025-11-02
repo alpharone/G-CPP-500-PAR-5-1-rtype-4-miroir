@@ -6,11 +6,16 @@
 */
 
 #include "ServerNetworkSystem.hpp"
+#include "Animation.hpp"
 #include "AsioNetworkTransport.hpp"
 #include "DefaultMessageSerializer.hpp"
+#include "Drawable.hpp"
+#include "EnemyAI.hpp"
 #include "MessageType.hpp"
+#include "Position.hpp"
 #include "ReliableLayerAdapter.hpp"
 #include "Utils.hpp"
+#include "Velocity.hpp"
 
 System::ServerNetworkSystem::ServerNetworkSystem(unsigned short port)
     : _port(port), _start_x(100), _start_y(200), _speed(200), _max_players(4),
@@ -23,9 +28,10 @@ void System::ServerNetworkSystem::init(Ecs::Registry &) {
   _serializer = std::make_shared<Network::DefaultMessageSerializer>();
   _adapter = std::make_unique<Network::ReliableLayerAdapter>(_transport,
                                                              _serializer, 1200);
-  _rooms = std::make_unique<Network::RoomManager>(
-      _start_x, _start_y, _speed, _max_players, _max_rooms, _timeout,
-      _screen_width, _screen_height, _snapshot_interval, _startTime);
+  Network::room_manager_config_t config{
+      _start_x, _start_y,      _speed,         _max_players,       _max_rooms,
+      _timeout, _screen_width, _screen_height, _snapshot_interval, _startTime};
+  _rooms = std::make_unique<Network::RoomManager>(config);
 
   _mainRoomId = _rooms->createRoom();
   Logger::info("[Server] Created main room #" + std::to_string(_mainRoomId));
@@ -61,9 +67,13 @@ void System::ServerNetworkSystem::init(Ecs::Registry &) {
                std::to_string(_port));
 }
 
-void System::ServerNetworkSystem::update(Ecs::Registry &, double dt) {
+void System::ServerNetworkSystem::update(Ecs::Registry &registry, double dt) {
   _adapter->tick(dt);
   _rooms->tick(dt);
+
+  checkForNewEntities(registry);
+
+  updateSnapshotsWithEntities(registry);
 
   auto rooms = _rooms->listRooms();
   for (auto roomId : rooms) {
@@ -155,8 +165,9 @@ void System::ServerNetworkSystem::handleNewClient(
                std::to_string(frame_h) + " " + std::to_string(frame_count) +
                " frames, " + std::to_string(frame_time) + "s");
 
-  auto joinResult = _rooms->joinAuto(from, sprite, frame_x, frame_y, frame_w,
-                                     frame_h, frame_count, frame_time);
+  Network::client_join_info_t info{sprite,  frame_x,     frame_y,   frame_w,
+                                   frame_h, frame_count, frame_time};
+  auto joinResult = _rooms->joinAuto(from, info);
   if (!joinResult.has_value()) {
     Logger::warn("[Server] Could not assign client to any room.");
     return;
@@ -267,6 +278,158 @@ void System::ServerNetworkSystem::handleDisconnect(
                ", id=" + std::to_string(clientId) + ")");
 
   _rooms->leave(roomId, clientId);
+}
+
+void System::ServerNetworkSystem::checkForNewEntities(Ecs::Registry &registry) {
+  auto &positions = registry.getComponents<Component::position_t>();
+  auto &drawables = registry.getComponents<Component::drawable_t>();
+  auto &animations = registry.getComponents<Component::animation_t>();
+  auto &enemyAIs = registry.getComponents<Component::enemy_ai_t>();
+
+  std::lock_guard<std::mutex> lk(_entitiesMtx);
+
+  for (size_t i = 0; i < positions.size() && i < drawables.size() &&
+                     i < animations.size() && i < enemyAIs.size();
+       ++i) {
+    Ecs::Entity entity(i);
+
+    auto posOpt = positions[i];
+    auto drawableOpt = drawables[i];
+    auto animOpt = animations[i];
+    auto enemyAIOpt = enemyAIs[i];
+
+    if (!posOpt.has_value() || !drawableOpt.has_value() ||
+        !animOpt.has_value() || !enemyAIOpt.has_value()) {
+      continue;
+    }
+
+    if (_trackedEntities.find(i) == _trackedEntities.end()) {
+      _trackedEntities.insert(i);
+      _lastEntityPositions[i] = {posOpt->x, posOpt->y};
+
+      Network::Packet spawnPacket;
+      spawnPacket.header.type = Network::ENTITY_SPAWN;
+
+      Network::write_u32_le(spawnPacket.payload,
+                            static_cast<uint32_t>(1000 + i));
+
+      uint32_t xInt;
+      std::memcpy(&xInt, &posOpt->x, sizeof(float));
+      Network::write_u32_le(spawnPacket.payload, xInt);
+
+      uint32_t yInt;
+      std::memcpy(&yInt, &posOpt->y, sizeof(float));
+      Network::write_u32_le(spawnPacket.payload, yInt);
+
+      std::string sprite = drawableOpt->meta.count("sprite_path")
+                               ? drawableOpt->meta.at("sprite_path")
+                               : "";
+      spawnPacket.payload.insert(spawnPacket.payload.end(), sprite.begin(),
+                                 sprite.end());
+      spawnPacket.payload.push_back('\0');
+
+      Network::write_u32_le(spawnPacket.payload,
+                            static_cast<uint32_t>(animOpt->startX));
+      Network::write_u32_le(spawnPacket.payload,
+                            static_cast<uint32_t>(animOpt->startY));
+      Network::write_u32_le(spawnPacket.payload,
+                            static_cast<uint32_t>(animOpt->frameW));
+      Network::write_u32_le(spawnPacket.payload,
+                            static_cast<uint32_t>(animOpt->frameH));
+      Network::write_u32_le(spawnPacket.payload,
+                            static_cast<uint32_t>(animOpt->frameCount));
+
+      uint32_t frameTimeBits;
+      float frameTime = 1.0f / animOpt->fps;
+      std::memcpy(&frameTimeBits, &frameTime, sizeof(float));
+      Network::write_u32_le(spawnPacket.payload, frameTimeBits);
+
+      spawnPacket.header.length =
+          static_cast<uint16_t>(spawnPacket.payload.size());
+
+      auto rooms = _rooms->listRooms();
+      for (auto roomId : rooms) {
+        auto &room = _rooms->getRoom(roomId);
+        std::lock_guard<std::mutex> rlk(room.mtx);
+        for (auto &[_, client] : room.clients) {
+          _adapter->sendReliable(client.endpoint, spawnPacket);
+        }
+      }
+
+      Logger::info("[Server] Sent ENTITY_SPAWN for enemy entity " +
+                   std::to_string(i));
+    }
+  }
+}
+
+void System::ServerNetworkSystem::updateSnapshotsWithEntities(
+    Ecs::Registry &registry) {
+  auto &positions = registry.getComponents<Component::position_t>();
+
+  std::lock_guard<std::mutex> lk(_entitiesMtx);
+
+  auto rooms = _rooms->listRooms();
+  for (auto roomId : rooms) {
+    auto &room = _rooms->getRoom(roomId);
+    std::lock_guard<std::mutex> rlk(room.mtx);
+
+    Network::Packet snap;
+    snap.header.type = Network::SERVER_SNAPSHOT;
+
+    double timestamp = std::chrono::duration<double>(
+                           std::chrono::steady_clock::now() - _startTime)
+                           .count();
+    uint64_t timestampInt;
+    std::memcpy(&timestampInt, &timestamp, sizeof(double));
+    Network::write_u64_le(snap.payload, timestampInt);
+
+    for (auto &[cid, client] : room.clients) {
+      if (client.posX != client.lastSnapX || client.posY != client.lastSnapY) {
+        client.lastSnapX = client.posX;
+        client.lastSnapY = client.posY;
+      }
+
+      Network::write_u32_le(snap.payload, cid);
+
+      uint32_t xInt;
+      std::memcpy(&xInt, &client.posX, sizeof(float));
+      Network::write_u32_le(snap.payload, xInt);
+
+      uint32_t yInt;
+      std::memcpy(&yInt, &client.posY, sizeof(float));
+      Network::write_u32_le(snap.payload, yInt);
+    }
+
+    for (auto entity : _trackedEntities) {
+      size_t entityIndex = static_cast<size_t>(entity);
+      if (entityIndex < positions.size()) {
+        auto posOpt = positions[entityIndex];
+        if (posOpt.has_value()) {
+          auto lastPosIt = _lastEntityPositions.find(entity);
+          if (lastPosIt == _lastEntityPositions.end() ||
+              lastPosIt->second.first != posOpt->x ||
+              lastPosIt->second.second != posOpt->y) {
+
+            _lastEntityPositions[entity] = {posOpt->x, posOpt->y};
+
+            Network::write_u32_le(snap.payload,
+                                  static_cast<uint32_t>(1000 + entityIndex));
+
+            uint32_t xInt;
+            std::memcpy(&xInt, &posOpt->x, sizeof(float));
+            Network::write_u32_le(snap.payload, xInt);
+
+            uint32_t yInt;
+            std::memcpy(&yInt, &posOpt->y, sizeof(float));
+            Network::write_u32_le(snap.payload, yInt);
+          }
+        }
+      }
+    }
+
+    snap.header.length = static_cast<uint16_t>(snap.payload.size());
+    room.outgoing.push_back(std::move(snap));
+  }
 }
 
 extern "C" std::shared_ptr<System::ISystem>

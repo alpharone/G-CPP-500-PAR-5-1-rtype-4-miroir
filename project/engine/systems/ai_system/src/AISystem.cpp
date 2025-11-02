@@ -1,280 +1,265 @@
-#include "../include/AISystem.hpp"
+#include "AISystem.hpp"
 #include <cmath>
-#include <fstream>
 #include <iostream>
-#include <sstream>
 
-IaSystem::IaSystem(const std::string &configPath, Ecs::Entity target)
-    : _target(target) {
-  loadConfig(configPath);
-}
+namespace System {
 
-void IaSystem::init(Ecs::Registry &registry) {
-  _entity = registry.spawnEntity();
-  float spawnX = 0.f, spawnY = 200.f;
+AISystem::AISystem() = default;
 
-  for (const auto &s : _states) {
-    if (s.name == "spawnX")
-      spawnX = s.speed;
-    if (s.name == "spawnY")
-      spawnY = s.amplitude;
+void AISystem::init(Ecs::Registry &registry) {
+  if (!_levels.empty()) {
+    startLevel(0);
   }
-
-  registry.emplaceComponent<Position>(_entity, Position{spawnX, spawnY});
-  registry.emplaceComponent<Velocity>(_entity, Velocity{0, 0});
-  registry.emplaceComponent<Health>(_entity, Health{10});
 }
 
-void IaSystem::shutdown() {}
-
-void IaSystem::loadConfig(const std::string &path) {
-  std::ifstream file(path);
-  if (!file.is_open()) {
+void AISystem::update(Ecs::Registry &registry, double dt) {
+  if (!_levelActive)
     return;
-  }
 
-  std::string line;
-  while (std::getline(file, line)) {
-    if (line.empty() || line[0] == '#')
-      continue;
-    if (line.find("[state]") != std::string::npos)
-      parseState(file);
-  }
+  updateLevelTimer(dt);
+  checkEnemySpawns(registry, dt);
+  updateEnemyMovements(registry, dt);
 }
 
-void IaSystem::parseState(std::ifstream &file) {
-  State state;
-  std::string line;
+void AISystem::shutdown() {}
 
-  while (std::getline(file, line)) {
-    if (line.empty() || line[0] == '#')
-      continue;
-    if (line.find("[state]") != std::string::npos) {
-      file.seekg(-static_cast<int>(line.size()) - 1, std::ios::cur);
-      break;
+void AISystem::loadConfig(const nlohmann::json &config) {
+  _config = config;
+  loadLevels(config);
+  loadEnemyTypes(config);
+  loadPatterns(config);
+}
+
+void AISystem::startLevel(size_t levelIndex) {
+  if (levelIndex >= _levels.size())
+    return;
+
+  _currentLevelIndex = levelIndex;
+  _levelTimer = 0.0f;
+  _levelActive = true;
+
+  for (auto &spawn : _levels[_currentLevelIndex].enemies) {
+    spawn.spawned = false;
+  }
+
+  std::cout << "Starting level: " << _levels[_currentLevelIndex].name
+            << std::endl;
+}
+
+void AISystem::spawnEnemy(Ecs::Registry &registry, const enemy_spawn_t &spawn,
+                          const enemy_type_t &type) {
+  Ecs::Entity enemy = registry.spawnEntity();
+
+  registry.emplaceComponent<Component::position_t>(
+      enemy, Component::position_t{spawn.spawn_x, spawn.spawn_y});
+
+  registry.emplaceComponent<Component::velocity_t>(
+      enemy, Component::velocity_t{-type.speed, 0.0f});
+
+  registry.emplaceComponent<Component::health_t>(
+      enemy, Component::health_t{type.health});
+
+  Component::drawable_t drawable{"sprite", 0, 1};
+  drawable.meta["sprite_path"] = type.sprite_sheet;
+  registry.emplaceComponent<Component::drawable_t>(enemy, drawable);
+
+  registry.emplaceComponent<Component::animation_t>(enemy, type.animation);
+
+  int patternId = getPatternId(type.pattern);
+  registry.emplaceComponent<Component::enemy_ai_t>(
+      enemy, Component::enemy_ai_t{patternId, 0.0f});
+
+  std::cout << "Spawned enemy of type: " << type.type << " at ("
+            << spawn.spawn_x << ", " << spawn.spawn_y << ")" << std::endl;
+}
+
+void AISystem::loadLevels(const nlohmann::json &config) {
+  if (!config.contains("levels"))
+    return;
+
+  for (const auto &levelJson : config["levels"]) {
+    level_t level;
+    level.name = levelJson.value("name", "unnamed");
+    level.background = levelJson.value("background", "");
+    level.duration = levelJson.value("duration", 60.0f);
+
+    if (levelJson.contains("enemies")) {
+      for (const auto &enemyJson : levelJson["enemies"]) {
+        enemy_spawn_t spawn;
+        spawn.type = enemyJson.value("type", "chaser");
+        spawn.spawn_x = enemyJson.value("spawn_x", 800.0f);
+        spawn.spawn_y = enemyJson.value("spawn_y", 300.0f);
+        spawn.spawn_time = enemyJson.value("spawn_time", 0.0f);
+        level.enemies.push_back(spawn);
+      }
     }
-    std::istringstream iss(line);
-    std::string key, value;
 
-    if (!(std::getline(iss, key, '=') && std::getline(iss, value)))
-      continue;
-
-    if (key == "name")
-      state.name = value;
-    else if (key == "movement")
-      state.movement = value;
-    else if (key == "shoot")
-      state.shoot = value;
-    else if (key == "speed")
-      state.speed = std::stof(value);
-    else if (key == "amplitude")
-      state.amplitude = std::stof(value);
-    else if (key == "frequency")
-      state.frequency = std::stof(value);
-    else if (key == "duration")
-      state.duration = std::stof(value);
-    else if (key == "next")
-      state.next = value;
-    else if (key == "condition")
-      state.condition = value;
+    _levels.push_back(level);
   }
-
-  _states.push_back(state);
 }
 
-void IaSystem::update(Ecs::Registry &reg, double dt) {
-  _time += dt;
-  _stateTimer += dt;
-
-  if (_states.empty())
+void AISystem::loadEnemyTypes(const nlohmann::json &config) {
+  if (!config.contains("enemies"))
     return;
-  State &current = _states[_currentStateIndex];
 
-  for (auto &[key, val] : _shootCooldowns)
-    if (val > 0.f)
-      val -= dt;
+  for (const auto &enemyJson : config["enemies"]) {
+    enemy_type_t type;
+    type.type = enemyJson.value("type", "unknown");
+    type.sprite_sheet = enemyJson.value("sprite_sheet", "");
+    type.frame_x = enemyJson.value("frame_x", 0);
+    type.frame_y = enemyJson.value("frame_y", 0);
+    type.frame_w = enemyJson.value("frame_w", 64);
+    type.frame_h = enemyJson.value("frame_h", 64);
 
-  executeState(reg, current, dt);
+    if (enemyJson.contains("animation")) {
+      const auto &animJson = enemyJson["animation"];
+      type.animation.frameW = type.frame_w;
+      type.animation.frameH = type.frame_h;
+      type.animation.frameCount = animJson.value("frame_count", 1);
+      type.animation.fps = animJson.value("frame_time", 0.1f) > 0
+                               ? 1.0f / animJson.value("frame_time", 0.1f)
+                               : 12;
+      type.animation.startX = type.frame_x;
+      type.animation.startY = type.frame_y;
+    }
 
-  if ((current.duration > 0.f && _stateTimer >= current.duration) ||
-      checkCondition(reg, current)) {
-    for (size_t i = 0; i < _states.size(); ++i) {
-      if (_states[i].name == current.next) {
-        _currentStateIndex = i;
-        _stateTimer = 0.f;
-        break;
+    type.pattern = enemyJson.value("pattern", "chase_player");
+    type.health = enemyJson.value("health", 100);
+    type.speed = enemyJson.value("speed", 100.0f);
+    type.damage = enemyJson.value("damage", 10);
+    type.points = enemyJson.value("points", 10);
+
+    _enemyTypes[type.type] = type;
+  }
+}
+
+void AISystem::updateLevelTimer(double dt) {
+  _levelTimer += dt;
+
+  if (_levelTimer >= _levels[_currentLevelIndex].duration) {
+    _levelActive = false;
+    std::cout << "level_t " << _levels[_currentLevelIndex].name << " completed!"
+              << std::endl;
+
+    if (_currentLevelIndex + 1 < _levels.size()) {
+      startLevel(_currentLevelIndex + 1);
+    }
+  }
+}
+
+void AISystem::checkEnemySpawns(Ecs::Registry &registry, double dt) {
+  if (_currentLevelIndex >= _levels.size())
+    return;
+
+  level_t &currentLevel = _levels[_currentLevelIndex];
+
+  for (auto &spawn : currentLevel.enemies) {
+    if (!spawn.spawned && _levelTimer >= spawn.spawn_time) {
+      auto it = _enemyTypes.find(spawn.type);
+      if (it != _enemyTypes.end()) {
+        spawnEnemy(registry, spawn, it->second);
+        spawn.spawned = true;
       }
     }
   }
 }
 
-void IaSystem::executeState(Ecs::Registry &reg, State &s, double dt) {
-  if (s.movement == "Chaser")
-    moveChaser(reg, dt);
-  else if (s.movement == "Sine")
-    moveSine(reg, dt);
-  else if (s.movement == "Zigzag")
-    moveZigzag(reg, dt);
-  else if (s.movement == "Charge")
-    moveCharge(reg, dt);
-
-  if (s.shoot == "Direct")
-    shootDirect(reg);
-  else if (s.shoot == "Homing")
-    shootHoming(reg);
-  else if (s.shoot == "Spread")
-    shootSpread(reg);
-}
-
-bool IaSystem::checkCondition(Ecs::Registry &reg, State &s) {
-  auto &posOpt = reg.getComponents<Position>()[_entity];
-  auto &playerOpt = reg.getComponents<Position>()[_target];
-  auto &hpOpt = reg.getComponents<Health>()[_entity];
-
-  if (!posOpt.has_value() || !playerOpt.has_value() || !hpOpt.has_value())
-    return false;
-
-  const Position &pos = *posOpt;
-  const Position &player = *playerOpt;
-  const Health &hp = *hpOpt;
-
-  float dx = player.x - pos.x;
-  float dy = player.y - pos.y;
-  float dist = std::sqrt(dx * dx + dy * dy);
-
-  if (s.condition.find("distance<") != std::string::npos) {
-    float val = std::stof(s.condition.substr(9));
-    return dist < val;
-  }
-  if (s.condition.find("distance>") != std::string::npos) {
-    float val = std::stof(s.condition.substr(9));
-    return dist > val;
-  }
-  if (s.condition.find("hp<") != std::string::npos) {
-    int val = std::stoi(s.condition.substr(3));
-    return hp.hp < val;
-  }
-  if (s.condition.find("hp>") != std::string::npos) {
-    int val = std::stoi(s.condition.substr(3));
-    return hp.hp > val;
-  }
-
-  return false;
-}
-
-void IaSystem::moveChaser(Ecs::Registry &reg, double dt) {
-  auto &posOpt = reg.getComponents<Position>()[_entity];
-  auto &velOpt = reg.getComponents<Velocity>()[_entity];
-  if (!posOpt || !velOpt)
+void AISystem::loadPatterns(const nlohmann::json &config) {
+  if (!config.contains("patterns"))
     return;
 
-  auto &pos = *posOpt;
-  auto &vel = *velOpt;
+  for (const auto &patternJson : config["patterns"]) {
+    pattern_t pattern;
+    pattern.name = patternJson.value("name", "unknown");
+    pattern.type = patternJson.value("type", "linear");
+    pattern.velocity_x = patternJson.value("velocity_x", 0.0f);
+    pattern.velocity_y = patternJson.value("velocity_y", 0.0f);
+    pattern.amplitude = patternJson.value("amplitude", 0.0f);
+    pattern.frequency = patternJson.value("frequency", 0.0f);
+    pattern.chase_speed = patternJson.value("chase_speed", 0.0f);
+    pattern.max_distance = patternJson.value("max_distance", 0.0f);
+    pattern.shoot_interval = patternJson.value("shoot_interval", 0.0f);
 
-  vel.vx = 50.f * dt;
-  pos.x += vel.vx;
-}
-
-void IaSystem::moveSine(Ecs::Registry &reg, double dt) {
-  auto &posOpt = reg.getComponents<Position>()[_entity];
-  if (!posOpt)
-    return;
-  auto &pos = *posOpt;
-
-  pos.x += 50.f * dt;
-  pos.y = 200 + 30.f * std::sin(_time * 2);
-}
-
-void IaSystem::moveZigzag(Ecs::Registry &reg, double dt) {
-  auto &posOpt = reg.getComponents<Position>()[_entity];
-  if (!posOpt)
-    return;
-  auto &pos = *posOpt;
-
-  pos.x += 80.f * dt;
-  pos.y += std::sin(_time * 8) * 60.f * dt;
-}
-
-void IaSystem::moveCharge(Ecs::Registry &reg, double dt) {
-  auto &posOpt = reg.getComponents<Position>()[_entity];
-  auto &playerOpt = reg.getComponents<Position>()[_target];
-  if (!posOpt || !playerOpt)
-    return;
-
-  auto &pos = *posOpt;
-  auto &player = *playerOpt;
-
-  float dx = player.x - pos.x;
-  float dy = player.y - pos.y;
-  float len = std::sqrt(dx * dx + dy * dy);
-  if (len > 0) {
-    pos.x += (dx / len) * 100.f * dt;
-    pos.y += (dy / len) * 100.f * dt;
+    _patterns[pattern.name] = pattern;
   }
 }
 
-void IaSystem::shootDirect(Ecs::Registry &reg) {
-  if (_shootCooldowns["Direct"] > 0.f)
-    return;
-  _shootCooldowns["Direct"] = 0.5f;
+void AISystem::updateEnemyMovements(Ecs::Registry &registry, double dt) {
+  auto &positions = registry.getComponents<Component::position_t>();
+  auto &velocities = registry.getComponents<Component::velocity_t>();
+  auto &enemyAIs = registry.getComponents<Component::enemy_ai_t>();
 
-  auto &posOpt = reg.getComponents<Position>()[_entity];
-  if (!posOpt)
-    return;
-  auto &pos = *posOpt;
+  for (size_t i = 0;
+       i < positions.size() && i < velocities.size() && i < enemyAIs.size();
+       ++i) {
+    if (!positions[i].has_value() || !velocities[i].has_value() ||
+        !enemyAIs[i].has_value()) {
+      continue;
+    }
 
-  Ecs::Entity bullet = reg.spawnEntity();
-  reg.emplaceComponent<Position>(bullet, Position{pos.x, pos.y});
-  reg.emplaceComponent<Velocity>(bullet, Velocity{300.f, 0.f});
-}
+    auto &pos = positions[i].value();
+    auto &vel = velocities[i].value();
+    auto &ai = enemyAIs[i].value();
 
-void IaSystem::shootHoming(Ecs::Registry &reg) {
-  if (_shootCooldowns["Homing"] > 0.f)
-    return;
-  _shootCooldowns["Homing"] = 1.f;
+    switch (ai.pattern) {
+    case 0:
+      vel.vx = -100.0f;
+      vel.vy = std::sin(ai.cooldown * 2.0f) * 20.0f;
+      break;
 
-  auto &posOpt = reg.getComponents<Position>()[_entity];
-  auto &playerOpt = reg.getComponents<Position>()[_target];
-  if (!posOpt || !playerOpt)
-    return;
+    case 1:
+      vel.vx = -90.0f;
+      vel.vy = std::sin(ai.cooldown * 3.0f) * 60.0f;
+      break;
 
-  auto &pos = *posOpt;
-  auto &player = *playerOpt;
+    case 2:
+      vel.vx = -80.0f;
+      vel.vy = std::sin(ai.cooldown * 1.5f) * 40.0f;
+      break;
 
-  float dx = player.x - pos.x;
-  float dy = player.y - pos.y;
-  float len = std::sqrt(dx * dx + dy * dy);
-  if (len == 0)
-    return;
-  dx /= len;
-  dy /= len;
+    case 3:
+      vel.vx = -50.0f;
+      vel.vy = std::sin(ai.cooldown * 0.8f) * 30.0f;
+      break;
 
-  Ecs::Entity bullet = reg.spawnEntity();
-  reg.emplaceComponent<Position>(bullet, Position{pos.x, pos.y});
-  reg.emplaceComponent<Velocity>(bullet, Velocity{dx * 200.f, dy * 200.f});
-}
+    default:
+      vel.vx = -100.0f;
+      vel.vy = 0.0f;
+      break;
+    }
 
-void IaSystem::shootSpread(Ecs::Registry &reg) {
-  if (_shootCooldowns["Spread"] > 0.f)
-    return;
-  _shootCooldowns["Spread"] = 2.f;
-
-  auto &posOpt = reg.getComponents<Position>()[_entity];
-  if (!posOpt)
-    return;
-  auto &pos = *posOpt;
-
-  int count = 5;
-  float range = 45.f;
-  float step = range / (count - 1);
-  float base = -range / 2.f;
-  float speed = 250.f;
-
-  for (int i = 0; i < count; ++i) {
-    float angle = (base + i * step) * 3.14159265f / 180.f;
-    Ecs::Entity bullet = reg.spawnEntity();
-    reg.emplaceComponent<Position>(bullet, Position{pos.x, pos.y});
-    reg.emplaceComponent<Velocity>(
-        bullet, Velocity{std::cos(angle) * speed, std::sin(angle) * speed});
+    ai.cooldown += dt;
   }
 }
+
+int AISystem::getPatternId(const std::string &pattern) {
+  static std::unordered_map<std::string, int> patternMap = {
+      {"chase_player", 0}, {"zigzag", 1}, {"sine", 2}, {"boss_pattern", 3}};
+
+  auto it = patternMap.find(pattern);
+  return it != patternMap.end() ? it->second : 0;
+}
+
+extern "C" std::shared_ptr<System::ISystem> createAISystem(std::any params) {
+  try {
+    auto vec = std::any_cast<std::vector<std::any>>(params);
+    auto aiSystem = std::make_shared<System::AISystem>();
+
+    if (!vec.empty()) {
+      try {
+        auto config = std::any_cast<nlohmann::json>(vec[0]);
+        aiSystem->loadConfig(config);
+      } catch (const std::exception &e) {
+        std::cerr << "Failed to load config in AISystem: " << e.what()
+                  << std::endl;
+      }
+    }
+
+    return aiSystem;
+  } catch (const std::exception &e) {
+    std::cerr << "Failed to create AISystem: " << e.what() << std::endl;
+  }
+  return nullptr;
+}
+
+} // namespace System

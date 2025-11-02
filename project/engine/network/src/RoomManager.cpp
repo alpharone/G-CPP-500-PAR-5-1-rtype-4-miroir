@@ -15,15 +15,13 @@ using namespace std::chrono;
 
 namespace Network {
 
-RoomManager::RoomManager(float start_x, float start_y, float speed,
-                         int max_players, int max_rooms, int timeout,
-                         int screen_width, int screen_height,
-                         double snapshot_interval,
-                         std::chrono::steady_clock::time_point start_time)
-    : _start_x(start_x), _start_y(start_y), _speed(speed),
-      _max_players(max_players), _max_rooms(max_rooms), _timeout(timeout),
-      _screen_width(screen_width), _screen_height(screen_height),
-      _snapshot_interval(snapshot_interval), _start_time(start_time) {}
+RoomManager::RoomManager(const room_manager_config_t &config)
+    : _start_x(config.start_x), _start_y(config.start_y), _speed(config.speed),
+      _max_players(config.max_players), _max_rooms(config.max_rooms),
+      _timeout(config.timeout), _screen_width(config.screen_width),
+      _screen_height(config.screen_height),
+      _snapshot_interval(config.snapshot_interval),
+      _start_time(config.start_time) {}
 
 RoomManager::~RoomManager() {}
 
@@ -36,9 +34,7 @@ uint32_t RoomManager::createRoom() {
 }
 
 std::optional<std::pair<uint32_t, uint32_t>>
-RoomManager::joinAuto(const endpoint_t &endpoint, const std::string &sprite,
-                      int frame_x, int frame_y, int frame_w, int frame_h,
-                      int frame_count, float frame_time) {
+RoomManager::joinAuto(const endpoint_t &endpoint, const client_join_info_t &info) {
   std::lock_guard<std::mutex> lock(_roomsMtx);
 
   for (auto &[id, room] : _rooms) {
@@ -48,13 +44,13 @@ RoomManager::joinAuto(const endpoint_t &endpoint, const std::string &sprite,
       room_client_t rc{cid, endpoint, false, steady_clock::now()};
       rc.posX = _start_x;
       rc.posY = _start_y;
-      rc.sprite = sprite;
-      rc.frame_x = frame_x;
-      rc.frame_y = frame_y;
-      rc.frame_w = frame_w;
-      rc.frame_h = frame_h;
-      rc.frame_count = frame_count;
-      rc.frame_time = frame_time;
+      rc.sprite = info.sprite;
+      rc.frame_x = info.frame_x;
+      rc.frame_y = info.frame_y;
+      rc.frame_w = info.frame_w;
+      rc.frame_h = info.frame_h;
+      rc.frame_count = info.frame_count;
+      rc.frame_time = info.frame_time;
       room.clients.emplace(cid, std::move(rc));
 
       Network::Packet accept;
@@ -77,13 +73,13 @@ RoomManager::joinAuto(const endpoint_t &endpoint, const std::string &sprite,
   room_client_t rc{cid, endpoint, false, steady_clock::now()};
   rc.posX = _start_x;
   rc.posY = _start_y;
-  rc.sprite = sprite;
-  rc.frame_x = frame_x;
-  rc.frame_y = frame_y;
-  rc.frame_w = frame_w;
-  rc.frame_h = frame_h;
-  rc.frame_count = frame_count;
-  rc.frame_time = frame_time;
+  rc.sprite = info.sprite;
+  rc.frame_x = info.frame_x;
+  rc.frame_y = info.frame_y;
+  rc.frame_w = info.frame_w;
+  rc.frame_h = info.frame_h;
+  rc.frame_count = info.frame_count;
+  rc.frame_time = info.frame_time;
   newRoom.clients.emplace(cid, std::move(rc));
 
   Network::Packet accept;
@@ -201,9 +197,8 @@ void RoomManager::onPacket(uint32_t roomId, const endpoint_t &from,
   }
 }
 
-void RoomManager::tick(double dt) {
+void RoomManager::updateClientMovements(double dt) {
   std::lock_guard<std::mutex> lock(_roomsMtx);
-  auto now = std::chrono::steady_clock::now();
 
   for (auto &[id, room] : _rooms) {
     std::lock_guard<std::mutex> rlk(room.mtx);
@@ -239,6 +234,15 @@ void RoomManager::tick(double dt) {
     }
 
     room.pendingInputs.clear();
+  }
+}
+
+void RoomManager::removeInactiveClients() {
+  std::lock_guard<std::mutex> lock(_roomsMtx);
+  auto now = std::chrono::steady_clock::now();
+
+  for (auto &[id, room] : _rooms) {
+    std::lock_guard<std::mutex> rlk(room.mtx);
 
     std::vector<uint32_t> toRemove;
     for (auto &[cid, client] : room.clients) {
@@ -253,6 +257,14 @@ void RoomManager::tick(double dt) {
                    " from room #" + std::to_string(id));
       room.clients.erase(cid);
     }
+  }
+}
+
+void RoomManager::sendSnapshots(double dt) {
+  std::lock_guard<std::mutex> lock(_roomsMtx);
+
+  for (auto &[id, room] : _rooms) {
+    std::lock_guard<std::mutex> rlk(room.mtx);
 
     room.snapshotTimer += dt;
     if (room.snapshotTimer >= _snapshot_interval) {
@@ -290,6 +302,12 @@ void RoomManager::tick(double dt) {
       room.outgoing.push_back(std::move(snap));
     }
   }
+}
+
+void RoomManager::tick(double dt) {
+  updateClientMovements(dt);
+  removeInactiveClients();
+  sendSnapshots(dt);
 }
 
 } // namespace Network

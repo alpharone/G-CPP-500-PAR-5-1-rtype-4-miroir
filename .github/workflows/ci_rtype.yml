@@ -24,12 +24,12 @@ jobs:
       - name: Show diff (optionnel)
         run: |
           git fetch origin main
-          git fetch origin dev
-          git diff origin/main..origin/dev --stat
+          git fetch origin develop
+          git diff origin/main..origin/develop --stat
 
       - name: Build project
         run: |
-          echo "Building project from dev branch..."
+          echo "Building project from develop branch..."
           mkdir -p build && cd build
           cmake ..
           make -j$(nproc)

@@ -1,24 +1,17 @@
 @startuml Architecture
 
-package "Shared::Engine" #LightBlue {
+package "Engine::ECS" #LightBlue {
   class Entity {
     - size_t _id
-    + explicit Entity(size_t id) noexcept
-    + operator size_t() const noexcept : size_t
-    + bool operator==(const Entity& other) const noexcept
-    + bool operator!=(const Entity& other) const noexcept
+    + Entity(size_t id) noexcept
+    + operator size_t() const noexcept
   }
 
   class "SparseArray<T>" {
     - std::vector<std::optional<T>> _data
     + std::optional<T>& operator[](size_t idx)
     + const std::optional<T>& operator[](size_t idx) const
-    + iterator begin() noexcept
-    + iterator end() noexcept
-    + const_iterator cbegin() const noexcept
-    + const_iterator cend() const noexcept
-    + template<typename... Params> T& emplaceAt(size_t idx, Params&&... params)
-    + void insertAt(size_t idx, const T& value)
+    + T& emplaceAt(size_t idx, Params&&... params)
     + void erase(size_t idx)
     + size_t size() const noexcept
   }
@@ -27,119 +20,133 @@ package "Shared::Engine" #LightBlue {
     - size_t _next_id
     - std::vector<size_t> _free_ids
     - std::unordered_map<std::type_index, std::any> _components
-    - std::vector<std::function<void(Registry&, const Entity&)>> _eraseCallbacks
+    - std::vector<std::function<void(Registry&, Entity)>> _erase_callbacks
     - std::vector<std::function<void(Registry&)>> _systems
-    + Entity spawn_entity()
-    + void kill_entity(const Entity& e)
-    + template<typename Component> void registerComponent()
+    + Entity spawnEntity()
+    + Entity spawnEntityWithId(size_t id)
+    + void killEntity(Entity const& e)
     + template<typename Component> SparseArray<Component>& getComponents()
-    + template<typename Component, typename... Params> Component& emplaceComponent(const Entity& e, Params&&... params)
-    + template<typename Component> void removeComponent(const Entity& e)
+    + template<typename Component, typename... Params> Component& emplaceComponent(Entity, Params&&...)
+    + template<typename Component> void removeComponent(Entity)
     + template<typename... Components, typename Function> void addSystem(Function&& f)
-    + void run_systems()
-  }
-
-  class Zipper {
-    + template<typename... Containers> auto makeZipper(Containers&... c)
-    + template<typename... Containers> auto makeIndexedZipper(Containers&... c)
   }
 }
 
-package "Shared::Components" #LightGreen {
-  struct Position {
-    + float x
-    + float y
+package "Engine::Components" #LightGreen {
+  class position_t {
+    + float x, y
   }
-  struct Velocity {
-    + float vx
-    + float vy
+  class velocity_t {
+    + float vx, vy, width, height
   }
-  struct Drawable {
-    + uint16_t w
-    + uint16_t h
-    + uint32_t color
-    + std::string spriteId
-  }
-  struct Controllable {}
-  struct Health {
+  class health_t {
     + int hp
   }
-  struct NetworkId {
-    + uint32_t id
+  class animation_t {
+    + int frameW, frameH, frameCount, fps, startX, startY
   }
-  struct EnemyAI {
+  class drawable_t {
+    + std::string spriteId
+    + std::map<std::string, std::any> meta
+  }
+  class enemyAI_t {
     + int pattern
     + float cooldown
   }
-  struct Projectile {
-    + float dmg
-    + int ownerId
+
+  enum CollisionType <<enum>> {
+    Player
+    Enemy
+    Projectile
+    Wall
   }
-  struct Damage {
-    + float amount
+
+  class collision_t {
+    + CollisionType type
+    + float width, height
   }
 }
 
 package "Engine::Systems" #LightYellow {
   interface ISystem {
-    + virtual void update(Registry& r, float dt) = 0
+    + void init(Ecs::Registry& registry)
+    + void update(Ecs::Registry& registry, double dt)
+    + void shutdown()
   }
-  
+
   note as N1 #Orange
     "Dynamic lib"
   end note
 
-  class PositionSystem {
-    + void update(Registry& r, float dt) override
+  class SystemManager {
+    - std::vector<std::shared_ptr<ISystem>> _systems
+    + void registerSystem(std::shared_ptr<ISystem> system)
+    + void registerSystem(std::string name, std::string path, std::string entrypoint)
+    + void addSystem(std::string name, std::any params)
+    + void updateAll(Ecs::Registry& r, double dt)
+    + void initAll(Ecs::Registry& r)
+    + void shutdownAll()
+    + void clearAll()
   }
-  class ControlSystem {
-    + void update(Registry& r, float dt) override
-  }
-  class PhysicsSystem {
-    + void update(Registry& r, float dt) override
-  }
-  class CollisionSystem {
-    + void update(Registry& r, float dt) override
-  }
-  class SpawnSystem {
-    + void update(Registry& r, float dt) override
-  }
-  class AISystem {
-    + void update(Registry& r, float dt) override
-  }
-  class ProjectileSystem {
-    + void update(Registry& r, float dt) override
-  }
-  class CleanupSystem {
-    + void update(Registry& r, float dt) override
-  }
-  class RenderSystem {
-    + void update(Registry& r, float dt) override
-  }
-  class SoundSystem {
-    + void update(Registry& r, float dt) override
-  }
-
-  ISystem <|-- PositionSystem
-  ISystem <|-- ControlSystem
-  ISystem <|-- PhysicsSystem
-  ISystem <|-- CollisionSystem
-  ISystem <|-- SpawnSystem
-  ISystem <|-- AISystem
-  ISystem <|-- ProjectileSystem
-  ISystem <|-- CleanupSystem
-  ISystem <|-- RenderSystem
-  ISystem <|-- SoundSystem
-}
-
-package "Engine::DynamicSystems" #LightPink {
 
   class SystemCatalog {
-    - std::map<std::string, std::string> libraryPaths
-    + void registerSystem(const std::string& name, const std::string& path)
-    + std::shared_ptr<ISystem> loadSystem(const std::string& name, std::any params)
+    - std::map<std::string, std::pair<std::string, std::string>> info
+    + void registerSystem(std::string name, std::string path, std::string entrypoint)
+    + std::shared_ptr<ISystem> loadSystem(std::string name, std::any params)
   }
 
+  ISystem <|-- CollisionSystem
+  class CollisionSystem {
+    + struct AABB { float minX, minY, maxX, maxY; size_t entity; }
+    + void update(Ecs::Registry& r, double dt) override
+    + void collision(Ecs::Registry& r, size_t e1, size_t e2)
+    + void blockEntity(position_t& ent_pos, velocity_t& ent_vel, const position_t& wall_pos, const collision_t& wall_col)
+  }
+
+  ISystem <|-- AnimationSystem
+  class AnimationSystem {
+    + void update(Ecs::Registry& r, double dt) override
+  }
+
+  ISystem <|-- AISystem
+  class AISystem {
+    + void update(Ecs::Registry& r, double dt) override
+    + void spawnEnemy(Ecs::Registry& r, EnemySpawn& spawn, EnemyType& type)
+  }
+
+  ISystem <|-- ClientNetworkSystem
+  class ClientNetworkSystem {
+    + void init(Ecs::Registry& r) override
+    + void update(Ecs::Registry& r, double dt) override
+    + void shutdown() override
+  }
+
+  ISystem <|-- ServerNetworkSystem
+  class ServerNetworkSystem {
+    + void init(Ecs::Registry& r) override
+    + void update(Ecs::Registry& r, double dt) override
+    + void shutdown() override
+    + void checkForNewEntities(Ecs::Registry& r)
+    + void updateSnapshotsWithEntities(Ecs::Registry& r)
+  }
+
+  SystemManager --> SystemCatalog
+}
+
+package "Engine::Game" #LightCoral {
+  class GameRunner {
+    - nlohmann::json fullConfig, globals
+    - Ecs::Registry registry
+    - SystemManager manager
+    - Network::RoomManager rooms
+    + void loadConfig(std::string configFile)
+    + void initSystems()
+    + void applyConfig()
+    + void run()
+  }
+
+  GameRunner --> SystemManager
+  GameRunner --> Network::RoomManager
 }
 
 package "Network::Protocol" #MistyRose {
@@ -150,200 +157,110 @@ package "Network::Protocol" #MistyRose {
     SERVER_SNAPSHOT = 0x04,
     ENTITY_SPAWN = 0x05,
     ENTITY_DESPAWN = 0x06,
-    GAME_EVENT = 0x07,
-    ACK = 0x08,
-    PING = 0x09,
-    PONG = 0x0A,
-    RELIABLE_FRAGMENT = 0x0B,
-    PLAYER_READY = 0x0C,
-    GAME_START = 0x0D,
-    GAME_OVER = 0x0E,
-    ADMIN_TEXT = 0xFF
-  }
-
-  struct MessageHeader {
-    + uint8_t type
-    + uint16_t length
-    + uint32_t seq
-    + uint8_t flags
+    GAME_START = 0x07,
+    ACK = 0x08
   }
 
   class Packet {
-    + MessageHeader header
-    + std::vector<uint8_t> payload
-    + std::vector<uint8_t> serialize() const
-    + static Packet deserialize(const std::vector<uint8_t>& data)
+    - MessageType header
+    - std::vector<uint8_t> payload
+    + Packet()
+    + void serialize()
+    + static Packet deserialize(std::vector<uint8_t>)
   }
 
-  ' class Serializer {'
-  '   + void writeUint8(uint8_t v)'
-  '   + void writeUint16(uint16_t v)'
-  '   + void writeUint32(uint32_t v)'
-  '   + void writeFloat32(float v)'
-  '   + uint8_t readUint8()'
-  '   + uint16_t readUint16()'
-  '   + uint32_t readUint32()'
-  '   + float readFloat32()'
-  '   + Packet serializeSnapshot(const Registry& r, const std::vector<Entity>& visible)'
-  '   + void deserializeSnapshot(const Packet& p, Registry& r)'
-  ' }'
-}
-
-package "Network::Server" #Thistle {
-  struct Connection {
-    + asio::ip::udp::endpoint endpoint
-    + ReliableChannel reliable
-    + std::queue<Network::Packet> pending_packet
-    + bool ready{false}
-    + uint32_t clientId{0}
+  class DefaultMessageSerializer {
+    + void serializeSnapshot()
+    + void deserialize()
   }
 
-  class ReliableChannel {
-    - uint32_t nextSeq
-    - std::map<uint32_t, Packet> sendBuffer
-    ' - std::chrono::milliseconds rttEstimate '
-    + void sendReliable(Packet& p)
-    + void onAck(uint32_t seq)
-    + std::vector<Packet> getPendingResend()
-    ' + void tickRetransmit(std::chrono::steady_clock::time_point now)'
-    ' + void fragmentAndSend(Packet& p, size_t mtu)'
-  }
-
-  class LobbyManager {
-    - std::map<int, Room> rooms
-    + void joinLobby(Connection& c)
-    + void leaveLobby(Connection& c)
-    + Room& createRoom()
-    + void setReady(Connection& c, bool ready)
-  }
-
-  class Room {
-    - GameInstance instance
-    - std::vector<Connection*> players
-    - enum State { WAITING, RUNNING, FINISHED } state
-    + void addPlayer(Connection& c)
-    + void removePlayer(Connection& c)
-    + void broadcastReliable(const Packet& p)
-    + void broadcastUnreliable(const Packet& p)
-  }
-
-  class Server {
-    - asio::ip::udp::socket _socket
-    - asio::ip::udp::endpoint _remote
-    - std::array<uint8_t, 2048> _buffer
-    - std::unordered_map<std::string, Connection> _connections
-    - LobbyManager _lobbies
-    - uint32_t _nextClientId{1}
-    - void doReceive()
-    - void handlePacket(Network::Packet& p, asio::ip::udp::endpoint& sender)
-    - void sendPacket(Connection& c, Network::Packet& p, bool reliable)
-    - void tick()
-    + Server(asio::io_context& ctx, unsigned short port)
+  class Network::ReliableLayerAdapter {
+    + std::shared_ptr<Network::AsioNetworkTransport> _transport
+    + std::shared_ptr<Network::DefaultMessageSerializer> _serializer
+    + void sendReliable(Network::endpoint_t, Network::Packet&)
+    + void sendUnreliable(Network::endpoint_t, Network::Packet&)
+    + void tick(double dt)
   }
 }
 
-package "Game::Server" #LightCoral {
-  class GameInstance {
-    - Registry registry
-    - SystemManager systemManager
-    - Map mapData
-    - uint32_t tickRate
-    - std::queue<GameEvent> eventQueue
-    + void tick()
-    + void addPlayer(Connection& c, uint32_t clientId)
-    + void removePlayer(uint32_t clientId)
-    + void applyInput(uint32_t clientId, const Input& in)
-    + Packet produceSnapshot()
+package "Network::Transport" #Thistle {
+  class AsioNetworkTransport {
+    + AsioNetworkTransport(std::string host, unsigned short port)
+    + void send(Network::Packet& pkt, Network::endpoint_t& to)
+    + void start()
+    + void stop()
+  }
+}
+
+package "Network::Server" {
+  class RoomManager {
+    - std::unordered_map<uint32_t, room_t> _rooms
+    - std::mutex _roomsMtx
+    - uint32_t _nextRoomId
+    - Ecs::Registry* _registry
+    - float _start_x, _start_y, _speed
+    + uint32_t createRoom()
+    + std::optional<std::pair<uint32_t, uint32_t>> joinAuto(endpoint_t& ep, std::string sprite, int fx, int fy, int fw, int fh, int fc, float ft)
+    + void leave(uint32_t roomId, uint32_t clientId)
+    + PacketVec collectOutgoing(uint32_t roomId)
+    + void onPacket(uint32_t roomId, const endpoint_t& from, const Packet& p)
+    + void tick(double dt)
+    + void setRegistry(Ecs::Registry* registry)
   }
 
-  class SystemManager {
-    - std::vector<ISystem*> systems
-    + void registerSystem(ISystem* s)
-    + void updateAll(Registry& r, float dt)
+  class room_client_t {
+    - uint32_t cid
+    - endpoint_t endpoint
+    - bool lastSnapSent
+    - steady_clock::time_point lastSeen
+    - float posX, posY
+    - std::string sprite
+    - int frame_x, frame_y, frame_w, frame_h, frame_count
+    - float frame_time
+    - pressedKeys
   }
 
-  class MapLoader {
-    + Map loadMap(int mapId)
-  }
-
-  class Map {
-    - int width
-    - int height
-    - std::vector<int> tiles
-    + int getTile(int x, int y) const
-    + void setTile(int x, int y, int value)
-  }
-
-  class GameEvent {
-    + int type
-    + uint32_t entityId
-    + std::vector<uint8_t> data
+  class room_t {
+    - uint32_t id
+    - std::unordered_map<uint32_t, room_client_t> clients
+    - std::mutex mtx
+    - std::vector<Network::Packet> outgoing
+    - std::map<size_t, std::pair<float, float>> lastEntityPositions
   }
 }
 
 package "Client" #LightSkyBlue {
+  class ClientNetworkSystem {
+    + ClientNetworkSystem(ClientNetworkConfig& config)
+    + void init(Ecs::Registry& registry) override
+    + void update(Ecs::Registry& registry, double dt) override
+    + void shutdown() override
+  }
+
   class ClientApp {
-    - Registry registry
-    - NetworkClient net
-    - RenderLoop renderLoop
-    - InputManager input
-    - ResourceManager resources
-    - SnapshotManager snapshotMgr
-    - uint32_t localPlayerId
-    + void connect(const std::string& addr)
     + void mainLoop()
-    + void onPacket(const Packet& p)
-    + void shutdown()
-  }
-
-  class NetworkClient {
-    - UdpSocket socket
-    - ReliableChannel reliable
-    + void send(const Packet& p)
-    + void onReceive(const std::vector<uint8_t>& raw)
-    + void tickIo()
-  }
-
-  class InputManager {
-    - std::vector<Input> pendingInputs
-    + void pollEvents()
-    + void pushInput(const Input& in)
-    + void sendInput(NetworkClient& net)
-    + void localPredict(Registry& r, const Input& in)
-  }
-
-  class ResourceManager {
-    - std::map<std::string, Texture> textures
-    - std::map<std::string, Sound> sounds
-    + void loadTexture(const std::string& id)
-    + void loadSound(const std::string& id)
-    + Texture& getTexture(const std::string& id)
-    + Sound& getSound(const std::string& id)
-  }
-
-  class SnapshotManager {
-    - std::map<uint32_t, ClientState> history
-    + void applySnapshot(const Packet& p, Registry& r)
-    + void reconcileLocalState(Registry& r, const std::vector<Input>& pending)
-  }
-
-  class RenderLoop {
-    - sf::RenderWindow window
-    + void renderFrame(const Registry& r)
-    + void loadAssets(ResourceManager& res)
   }
 }
 
 package "Tools" #Wheat {
   class Logger {
-    + void log(LogLevel level, const std::string& msg)
+    + void info(const std::string& msg)
+    + void error(const std::string& msg)
+    + void warn(const std::string& msg)
   }
-  class ConfigManager {
-    + void load(const std::string& path)
+
+  class SpriteManager {
+    - std::map<std::string, Texture> textures
+    - std::map<std::string, Font> fonts
+    + Texture& loadTexture(const std::string& path)
+    + Font& loadFont(const std::string& path)
+    + void drawTexture(const std::string& id, float x, float y, float scale)
+    + void drawText(const std::string& fontId, const std::string& text, float x, float y, int size)
   }
+
   class DlLoader {
     + DlLoader(const std::string& path, const std::string& entrypoint)
-    + std::shared_ptr<T> createInstance(std::any params)
+    + std::shared_ptr<ISystem> createInstance(std::any params)
   }
 }
 

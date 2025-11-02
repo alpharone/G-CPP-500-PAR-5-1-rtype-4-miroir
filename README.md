@@ -87,6 +87,18 @@ r-type/
     └── server/
 ```
 
+## Developer Documentation
+
+Comprehensive guides for developers to extend and maintain the engine are available in the [docs/dev/](docs/dev/) directory.
+
+This includes tutorials on:
+- Adding new systems and components
+- Understanding the ECS architecture
+- Configuring the engine via JSON
+- Extending the networking protocol
+
+Start with the [developers' guide index](docs/dev/index.md) for navigation.
+
 ## Network Protocol
 
 * Transport: UDP

@@ -6,8 +6,8 @@
 */
 
 #include "GameRunner.hpp"
-#include "Logger.hpp"
 #include "ClientConfig.hpp"
+#include "Logger.hpp"
 #include <filesystem>
 #include <fstream>
 #include <iostream>

@@ -5,12 +5,12 @@
 ** AnimationSystem.cpp
 */
 
-#include <any>
-#include <sstream>
-#include "Animation.hpp"
 #include "AnimationSystem.hpp"
+#include "Animation.hpp"
 #include "Drawable.hpp"
 #include "Logger.hpp"
+#include <any>
+#include <sstream>
 
 System::AnimationSystem::AnimationSystem() {
   _spriteManager = std::make_unique<SpriteManager>();

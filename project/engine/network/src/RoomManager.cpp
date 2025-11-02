@@ -34,7 +34,8 @@ uint32_t RoomManager::createRoom() {
 }
 
 std::optional<std::pair<uint32_t, uint32_t>>
-RoomManager::joinAuto(const endpoint_t &endpoint, const client_join_info_t &info) {
+RoomManager::joinAuto(const endpoint_t &endpoint,
+                      const client_join_info_t &info) {
   std::lock_guard<std::mutex> lock(_roomsMtx);
 
   for (auto &[id, room] : _rooms) {

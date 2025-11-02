@@ -1,10 +1,12 @@
-add_library(RenderSystem SHARED
+set(TARGET RenderSystem)
+
+add_library(${TARGET} SHARED
     src/RenderSystem.cpp
 )
 
-set_target_properties(RenderSystem PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/plugins/systems)
+set_target_properties(${TARGET} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/plugins/systems)
 
-target_include_directories(RenderSystem
+target_include_directories(${TARGET}
     PUBLIC
         include
         ${CMAKE_SOURCE_DIR}/project/engine/systems/include
@@ -12,7 +14,7 @@ target_include_directories(RenderSystem
         ${CMAKE_SOURCE_DIR}/project/engine/components/include
 )
 
-target_link_libraries(RenderSystem
+target_link_libraries(${TARGET}
     PRIVATE
         ecs
         components
@@ -25,7 +27,7 @@ if(BUILD_TESTS)
     add_executable(RenderSystemTest
         tests/RenderSystemTest.cpp
     )
-    target_link_libraries(RenderSystemTest PRIVATE RenderSystem Catch2::Catch2WithMain)
+    target_link_libraries(RenderSystemTest PRIVATE ${TARGET} Catch2::Catch2WithMain)
     catch_discover_tests(RenderSystemTest)
 endif()
 

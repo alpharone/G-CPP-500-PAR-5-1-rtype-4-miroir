@@ -1,10 +1,12 @@
-add_library(ClientNetworkSystem SHARED
+set(TARGET ClientNetworkSystem)
+
+add_library(${TARGET} SHARED
     src/ClientNetworkSystem.cpp
 )
 
-set_target_properties(ClientNetworkSystem PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/plugins/systems)
+set_target_properties(${TARGET} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/plugins/systems)
 
-target_include_directories(ClientNetworkSystem
+target_include_directories(${TARGET}
     PUBLIC
         include
         ${CMAKE_SOURCE_DIR}/project/engine/systems/include
@@ -13,7 +15,7 @@ target_include_directories(ClientNetworkSystem
         ${asio_SOURCE_DIR}/asio/include
 )
 
-target_link_libraries(ClientNetworkSystem
+target_link_libraries(${TARGET}
     PRIVATE
         ecs
         network
@@ -26,7 +28,7 @@ if(BUILD_TESTS)
     add_executable(ClientNetworkSystemTest
         tests/ClientNetworkSystemTest.cpp
     )
-    target_link_libraries(ClientNetworkSystemTest PRIVATE ClientNetworkSystem Catch2::Catch2WithMain)
+    target_link_libraries(ClientNetworkSystemTest PRIVATE ${TARGET} Catch2::Catch2WithMain)
     catch_discover_tests(ClientNetworkSystemTest)
 endif()
 

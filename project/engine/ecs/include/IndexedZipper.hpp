@@ -6,12 +6,11 @@
 */
 
 #pragma once
+#include "Entity.hpp"
+#include "SparseArray.hpp"
 #include <algorithm>
 #include <tuple>
 #include <utility>
-
-#include "Entity.hpp"
-#include "SparseArray.hpp"
 
 namespace Ecs {
 

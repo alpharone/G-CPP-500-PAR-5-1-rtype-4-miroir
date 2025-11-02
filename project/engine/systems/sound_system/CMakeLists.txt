@@ -1,10 +1,12 @@
-add_library(SoundSystem SHARED
+set(TARGET SoundSystem)
+
+add_library(${TARGET} SHARED
     src/SoundSystem.cpp
 )
 
-set_target_properties(SoundSystem PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/plugins/systems)
+set_target_properties(${TARGET} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/plugins/systems)
 
-target_include_directories(SoundSystem
+target_include_directories(${TARGET}
     PUBLIC
         include
         ${CMAKE_SOURCE_DIR}/project/engine/systems/include
@@ -12,7 +14,7 @@ target_include_directories(SoundSystem
         ${CMAKE_SOURCE_DIR}/project/engine/components/include
 )
 
-target_link_libraries(SoundSystem
+target_link_libraries(${TARGET}
     PRIVATE
         ecs
         components
@@ -23,7 +25,7 @@ if(BUILD_TESTS)
     add_executable(SoundSystemTest
         tests/SoundSystemTest.cpp
     )
-    target_link_libraries(SoundSystemTest PRIVATE SoundSystem Catch2::Catch2WithMain)
+    target_link_libraries(SoundSystemTest PRIVATE ${TARGET} Catch2::Catch2WithMain)
     catch_discover_tests(SoundSystemTest)
 endif()
 

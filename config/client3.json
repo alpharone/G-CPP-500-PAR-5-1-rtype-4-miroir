@@ -1,0 +1,55 @@
+{
+  "systems": [
+    {
+      "name": "client_net",
+      "lib": "./plugins/systems/libClientNetworkSystem.so",
+      "factory": "createClientNetworkSystem",
+      "params": ["network.server_ip", "network.server_port", "netCtx", "player.sprite_sheet", "player.frame_w", "player.frame_h", "player.animation.frame_count", "player.animation.frame_time", "player.frame_x", "player.frame_y"]
+    },
+    {
+      "name": "animation",
+      "lib": "./plugins/systems/libAnimationSystem.so",
+      "factory": "createAnimationSystem",
+      "params": []
+    },
+    {
+      "name": "render",
+      "lib": "./plugins/systems/libRenderSystem.so",
+      "factory": "createRenderSystem",
+      "params": ["display.window_width", "display.window_height", "display.window_title", "netCtx"]
+    },
+    {
+      "name": "input",
+      "lib": "./plugins/systems/libInputSystem.so",
+      "factory": "createInputSystem",
+      "params": ["netCtx"]
+    }
+  ],
+  "globals": {
+  },
+  "player": {
+    "sprite_sheet": "assets/sprites/r-typesheet42.gif",
+    "frame_x": 0,
+    "frame_y": 34,
+    "frame_w": 33,
+    "frame_h": 17,
+    "animation": { "frame_count": 4, "frame_time": 0.2 },
+    "speed": 20,
+    "health": 100
+  },
+  "network": {
+    "server_ip": "127.0.0.1",
+    "server_port": 4242,
+    "reconnect_timeout": 5
+  },
+  "display": {
+    "window_width": 1200,
+    "window_height": 1000,
+    "window_title": "R-Type Client",
+    "fps_target": 60
+  },
+  "assets": {
+    "background": "assets/bg/space.png",
+    "ui_font": "assets/fonts/arial.ttf"
+  }
+}

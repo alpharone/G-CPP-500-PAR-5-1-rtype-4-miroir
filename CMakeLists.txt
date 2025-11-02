@@ -35,6 +35,12 @@ CPMAddPackage(
   OPTIONS "ASIO_SEPARATE_COMPILATION=OFF"
 )
 
+CPMAddPackage(
+  NAME nlohmann_json
+  GIT_REPOSITORY https://github.com/nlohmann/json.git
+  GIT_TAG v3.11.2
+)
+
 if(Catch2_ADDED)
   list(APPEND CMAKE_MODULE_PATH ${Catch2_SOURCE_DIR}/extras)
   include(Catch)

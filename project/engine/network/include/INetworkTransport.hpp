@@ -6,12 +6,11 @@
 */
 
 #pragma once
+#include "Room.hpp"
 #include <cstdint>
 #include <functional>
 #include <string>
 #include <vector>
-
-#include "Room.hpp"
 
 namespace Network {
 

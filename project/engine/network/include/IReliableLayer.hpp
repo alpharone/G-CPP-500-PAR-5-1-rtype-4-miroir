@@ -7,11 +7,10 @@
 
 #pragma once
 
-#include <cstdint>
-#include <vector>
-
 #include "INetworkTransport.hpp"
 #include "Packets.hpp"
+#include <cstdint>
+#include <vector>
 
 namespace Network {
 

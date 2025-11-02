@@ -7,15 +7,14 @@
 
 #pragma once
 
+#include "Packets.hpp"
+#include "Room.hpp"
 #include <chrono>
 #include <cstdint>
 #include <mutex>
 #include <optional>
 #include <unordered_map>
 #include <vector>
-
-#include "Packets.hpp"
-#include "Room.hpp"
 
 namespace std {
 template <> struct hash<Network::endpoint_t> {
@@ -28,17 +27,39 @@ template <> struct hash<Network::endpoint_t> {
 
 namespace Network {
 
+struct room_manager_config_t {
+  float start_x;
+  float start_y;
+  float speed;
+  int max_players;
+  int max_rooms;
+  int timeout;
+  int screen_width;
+  int screen_height;
+  double snapshot_interval;
+  std::chrono::steady_clock::time_point start_time;
+};
+
+struct client_join_info_t {
+  std::string sprite;
+  int frame_x;
+  int frame_y;
+  int frame_w;
+  int frame_h;
+  int frame_count;
+  float frame_time;
+};
+
 class RoomManager {
 public:
   using PacketVec = std::vector<Network::Packet>;
-  static constexpr int MAX_PLAYERS_PER_ROOM = 4;
 
-  RoomManager();
+  RoomManager(const room_manager_config_t &config);
   ~RoomManager();
 
   uint32_t createRoom();
   std::optional<std::pair<uint32_t, uint32_t>>
-  joinAuto(const endpoint_t &endpoint);
+  joinAuto(const endpoint_t &endpoint, const client_join_info_t &info);
   void leave(uint32_t roomId, uint32_t clientId);
   std::vector<uint32_t> listRooms();
 
@@ -46,12 +67,26 @@ public:
   PacketVec collectOutgoing(uint32_t roomId);
   void onPacket(uint32_t roomId, const endpoint_t &from,
                 const Network::Packet &p);
+  void updateClientMovements(double dt);
+  void removeInactiveClients();
+  void sendSnapshots(double dt);
+
   void tick(double dt);
 
 private:
   std::unordered_map<uint32_t, room_t> _rooms;
   std::mutex _roomsMtx;
   uint32_t _nextRoomId{0};
+  float _start_x;
+  float _start_y;
+  float _speed;
+  int _max_players;
+  int _max_rooms;
+  int _timeout;
+  int _screen_width;
+  int _screen_height;
+  double _snapshot_interval;
+  std::chrono::steady_clock::time_point _start_time;
 };
 
 } // namespace Network

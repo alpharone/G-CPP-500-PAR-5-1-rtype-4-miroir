@@ -17,7 +17,6 @@ target_link_libraries(systems
 add_library(shared::systems ALIAS systems)
 
 add_subdirectory(position_system)
-add_subdirectory(control_system)
 add_subdirectory(collision_system)
 add_subdirectory(physics_system)
 add_subdirectory(ai_system)
@@ -26,17 +25,13 @@ add_subdirectory(render_system)
 add_subdirectory(server_network_system)
 add_subdirectory(client_network_system)
 add_subdirectory(sound_system)
-add_subdirectory(cleanup_system)
 add_subdirectory(input_system)
-add_subdirectory(spawn_system)
 add_subdirectory(animation_system)
 
 add_custom_target(system_clean
     DEPENDS
         AISystem_clean
-        CleanupSystem_clean
         CollisionSystem_clean
-        ControlSystem_clean
         PhysicsSystem_clean
         PositionSystem_clean
         ProjectileSystem_clean
@@ -44,7 +39,6 @@ add_custom_target(system_clean
         ClientNetworkSystem_clean
         RenderSystem_clean
         SoundSystem_clean
-        SpawnSystem_clean
         InputSystem_clean
         AnimationSystem_clean
     COMMENT "-> start clean system"

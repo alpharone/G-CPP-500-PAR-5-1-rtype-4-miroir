@@ -6,13 +6,11 @@
 */
 
 #include "AnimationSystem.hpp"
-
-#include <any>
-#include <sstream>
-
 #include "Animation.hpp"
 #include "Drawable.hpp"
 #include "Logger.hpp"
+#include <any>
+#include <sstream>
 
 System::AnimationSystem::AnimationSystem() {
   _spriteManager = std::make_unique<SpriteManager>();
@@ -72,8 +70,23 @@ void System::AnimationSystem::shutdown() {
     _spriteManager->unloadAll();
 }
 
-extern "C" std::shared_ptr<System::ISystem> createAnimationSystem(std::any) {
+void System::AnimationSystem::applyAnimation(Ecs::Registry &registry,
+                                             Ecs::Entity entity, int frameW,
+                                             int frameH, int frameCount,
+                                             int fps, bool loop, int startX,
+                                             int startY,
+                                             const std::string &name) {
+  Component::animation_t anim(frameW, frameH, frameCount, fps, loop, startX,
+                              startY, name);
+  registry.emplaceComponent<Component::animation_t>(entity, anim);
+  Logger::info("[AnimationSystem] Applied animation '" + name + "' to entity " +
+               std::to_string(static_cast<size_t>(entity)));
+}
+
+extern "C" std::shared_ptr<System::ISystem>
+createAnimationSystem(std::any params) {
   try {
+    auto vec = std::any_cast<std::vector<std::any>>(params);
     return std::make_shared<System::AnimationSystem>();
   } catch (const std::exception &e) {
     Logger::error(std::string("[Factory] Failed to create AnimationSystem: ") +

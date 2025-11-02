@@ -1,10 +1,12 @@
-add_library(PositionSystem SHARED
+set(TARGET PositionSystem)
+
+add_library(${TARGET} SHARED
     src/PositionSystem.cpp
 )
 
-set_target_properties(PositionSystem PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/plugins/systems)
+set_target_properties(${TARGET} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/plugins/systems)
 
-target_include_directories(PositionSystem
+target_include_directories(${TARGET}
     PUBLIC
         include
         ${CMAKE_SOURCE_DIR}/project/engine/systems/include
@@ -12,7 +14,7 @@ target_include_directories(PositionSystem
         ${CMAKE_SOURCE_DIR}/project/engine/components/include
 )
 
-target_link_libraries(PositionSystem
+target_link_libraries(${TARGET}
     PRIVATE
         ecs
         components
@@ -23,7 +25,7 @@ if(BUILD_TESTS)
     add_executable(PositionSystemTest
         tests/PositionSystemTest.cpp
     )
-    target_link_libraries(PositionSystemTest PRIVATE PositionSystem Catch2::Catch2WithMain)
+    target_link_libraries(PositionSystemTest PRIVATE ${TARGET} Catch2::Catch2WithMain)
     catch_discover_tests(PositionSystemTest)
 endif()
 

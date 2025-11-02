@@ -7,9 +7,8 @@
 
 #pragma once
 
-#include <raylib.h>
-
 #include <cstdint>
+#include <raylib.h>
 #include <string>
 #include <unordered_map>
 

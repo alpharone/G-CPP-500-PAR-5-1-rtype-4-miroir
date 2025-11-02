@@ -1,43 +1,35 @@
 /*
 ** EPITECH PROJECT, 2025
-** repo
+** Server
 ** File description:
-** main
+** main.cpp
 */
 
-#include <AsioNetworkTransport.hpp>
-#include <DefaultMessageSerializer.hpp>
-#include <ReliableLayerAdapter.hpp>
-#include <chrono>
-#include <thread>
-
+#include "GameRunner.hpp"
 #include "Logger.hpp"
-#include "Registry.hpp"
-#include "SystemManager.hpp"
+#include <iostream>
 
-int main() {
-  Logger::init("logs/server.log");
-  Ecs::Registry registry;
-
-  System::SystemCatalog catalog;
-  System::SystemManager manager;
-
-  catalog.registerSystem("server_net",
-                         "./plugins/systems/libServerNetworkSystem.so",
-                         "createServerNetworkSystem");
-  auto serverNet = catalog.loadSystem("server_net", (unsigned short)4242);
-  manager.registerSystem(serverNet);
-
-  manager.initAll(registry);
-  Logger::info("[Server] Running...");
-  const float dt = 1.f / 60.f;
-  while (true) {
-    manager.updateAll(registry, dt);
-    std::this_thread::sleep_for(std::chrono::milliseconds(16));
+int main(int argc, char *argv[]) {
+  if (argc <= 1) {
+    Logger::info("Usage:\t./r-type_server <config_file>.json");
+    return 84;
   }
 
-  manager.shutdownAll();
-  manager.clearAll();
+  std::string configFile = argv[1];
+
+  Logger::init("logs/server.log");
+  std::cout << "Starting R-Type server with config: " << configFile
+            << std::endl;
+
+  try {
+    GameRunner game(configFile);
+    game.run();
+  } catch (const std::exception &e) {
+    std::cerr << "Error: " << e.what() << std::endl;
+    Logger::shutdown();
+    return 1;
+  }
+
   Logger::shutdown();
   return 0;
 }

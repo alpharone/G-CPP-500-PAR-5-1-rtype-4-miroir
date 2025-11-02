@@ -7,12 +7,11 @@
 
 #pragma once
 
-#include <memory>
-#include <vector>
-
 #include "ISystem.hpp"
 #include "Registry.hpp"
 #include "SystemCatalog.hpp"
+#include <memory>
+#include <vector>
 
 namespace System {
 

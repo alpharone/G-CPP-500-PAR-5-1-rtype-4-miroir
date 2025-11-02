@@ -1,10 +1,12 @@
-add_library(AISystem SHARED
+set(TARGET AISystem)
+
+add_library(${TARGET} SHARED
     src/AISystem.cpp
 )
 
-set_target_properties(AISystem PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/plugins/systems)
+set_target_properties(${TARGET} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/plugins/systems)
 
-target_include_directories(AISystem
+target_include_directories(${TARGET}
     PUBLIC
         include
         ${CMAKE_SOURCE_DIR}/project/engine/systems/include
@@ -12,18 +14,19 @@ target_include_directories(AISystem
         ${CMAKE_SOURCE_DIR}/project/engine/components/include
 )
 
-target_link_libraries(AISystem
+target_link_libraries(${TARGET}
     PRIVATE
         ecs
         components
         tools
+        nlohmann_json::nlohmann_json
 )
 
 if(BUILD_TESTS)
     add_executable(AISystemTest
         tests/AISystemTest.cpp
     )
-    target_link_libraries(AISystemTest PRIVATE AISystem Catch2::Catch2WithMain)
+    target_link_libraries(AISystemTest PRIVATE ${TARGET} Catch2::Catch2WithMain)
     catch_discover_tests(AISystemTest)
 endif()
 

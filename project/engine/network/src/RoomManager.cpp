@@ -6,18 +6,22 @@
 */
 
 #include "RoomManager.hpp"
-
-#include <chrono>
-
 #include "Logger.hpp"
 #include "MessageType.hpp"
 #include "Utils.hpp"
+#include <chrono>
 
 using namespace std::chrono;
 
 namespace Network {
 
-RoomManager::RoomManager() {}
+RoomManager::RoomManager(const room_manager_config_t &config)
+    : _start_x(config.start_x), _start_y(config.start_y), _speed(config.speed),
+      _max_players(config.max_players), _max_rooms(config.max_rooms),
+      _timeout(config.timeout), _screen_width(config.screen_width),
+      _screen_height(config.screen_height),
+      _snapshot_interval(config.snapshot_interval),
+      _start_time(config.start_time) {}
 
 RoomManager::~RoomManager() {}
 
@@ -30,20 +34,31 @@ uint32_t RoomManager::createRoom() {
 }
 
 std::optional<std::pair<uint32_t, uint32_t>>
-RoomManager::joinAuto(const endpoint_t &endpoint) {
+RoomManager::joinAuto(const endpoint_t &endpoint,
+                      const client_join_info_t &info) {
   std::lock_guard<std::mutex> lock(_roomsMtx);
 
   for (auto &[id, room] : _rooms) {
     std::lock_guard<std::mutex> rlk(room.mtx);
-    if (room.clients.size() < static_cast<size_t>(MAX_PLAYERS_PER_ROOM)) {
+    if (room.clients.size() < static_cast<size_t>(_max_players)) {
       uint32_t cid = room.nextClientId++;
       room_client_t rc{cid, endpoint, false, steady_clock::now()};
+      rc.posX = _start_x;
+      rc.posY = _start_y;
+      rc.sprite = info.sprite;
+      rc.frame_x = info.frame_x;
+      rc.frame_y = info.frame_y;
+      rc.frame_w = info.frame_w;
+      rc.frame_h = info.frame_h;
+      rc.frame_count = info.frame_count;
+      rc.frame_time = info.frame_time;
       room.clients.emplace(cid, std::move(rc));
 
       Network::Packet accept;
       accept.header.type = Network::ACCEPT_CLIENT;
       accept.header.seq = 0;
       std::vector<uint8_t> pay;
+      Network::write_u32_le(pay, id);
       Network::write_u32_le(pay, cid);
       accept.payload = std::move(pay);
       accept.header.length = static_cast<uint16_t>(accept.payload.size());
@@ -57,6 +72,15 @@ RoomManager::joinAuto(const endpoint_t &endpoint) {
   room_t newRoom{newRoomId};
   uint32_t cid = newRoom.nextClientId += 1;
   room_client_t rc{cid, endpoint, false, steady_clock::now()};
+  rc.posX = _start_x;
+  rc.posY = _start_y;
+  rc.sprite = info.sprite;
+  rc.frame_x = info.frame_x;
+  rc.frame_y = info.frame_y;
+  rc.frame_w = info.frame_w;
+  rc.frame_h = info.frame_h;
+  rc.frame_count = info.frame_count;
+  rc.frame_time = info.frame_time;
   newRoom.clients.emplace(cid, std::move(rc));
 
   Network::Packet accept;
@@ -174,15 +198,14 @@ void RoomManager::onPacket(uint32_t roomId, const endpoint_t &from,
   }
 }
 
-void RoomManager::tick(double dt) {
+void RoomManager::updateClientMovements(double dt) {
   std::lock_guard<std::mutex> lock(_roomsMtx);
-  auto now = std::chrono::steady_clock::now();
 
   for (auto &[id, room] : _rooms) {
     std::lock_guard<std::mutex> rlk(room.mtx);
 
     for (auto &[cid, client] : room.clients) {
-      float speed = 200.0f * dt;
+      float speed = _speed * dt;
       for (uint8_t code : client.pressedKeys) {
         switch (code) {
         case Network::UP:
@@ -201,16 +224,33 @@ void RoomManager::tick(double dt) {
           break;
         }
       }
+      if (client.posX < 0)
+        client.posX = 0;
+      if (client.posX > _screen_width)
+        client.posX = _screen_width;
+      if (client.posY < 0)
+        client.posY = 0;
+      if (client.posY > _screen_height)
+        client.posY = _screen_height;
     }
 
     room.pendingInputs.clear();
+  }
+}
+
+void RoomManager::removeInactiveClients() {
+  std::lock_guard<std::mutex> lock(_roomsMtx);
+  auto now = std::chrono::steady_clock::now();
+
+  for (auto &[id, room] : _rooms) {
+    std::lock_guard<std::mutex> rlk(room.mtx);
 
     std::vector<uint32_t> toRemove;
     for (auto &[cid, client] : room.clients) {
       auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
                          now - client.lastSeen)
                          .count();
-      if (elapsed > 60)
+      if (elapsed > _timeout)
         toRemove.push_back(cid);
     }
     for (auto cid : toRemove) {
@@ -218,19 +258,32 @@ void RoomManager::tick(double dt) {
                    " from room #" + std::to_string(id));
       room.clients.erase(cid);
     }
+  }
+}
+
+void RoomManager::sendSnapshots(double dt) {
+  std::lock_guard<std::mutex> lock(_roomsMtx);
+
+  for (auto &[id, room] : _rooms) {
+    std::lock_guard<std::mutex> rlk(room.mtx);
 
     room.snapshotTimer += dt;
-    if (room.snapshotTimer >= 0.05) {
+    if (room.snapshotTimer >= _snapshot_interval) {
       room.snapshotTimer = 0.0;
 
       Network::Packet snap;
       snap.header.type = Network::SERVER_SNAPSHOT;
-      bool hasChanges = false;
+
+      double timestamp = std::chrono::duration<double>(
+                             std::chrono::steady_clock::now() - _start_time)
+                             .count();
+      uint64_t timestampInt;
+      std::memcpy(&timestampInt, &timestamp, sizeof(double));
+      Network::write_u64_le(snap.payload, timestampInt);
 
       for (auto &[cid, client] : room.clients) {
         if (client.posX != client.lastSnapX ||
             client.posY != client.lastSnapY) {
-          hasChanges = true;
           client.lastSnapX = client.posX;
           client.lastSnapY = client.posY;
         }
@@ -250,6 +303,12 @@ void RoomManager::tick(double dt) {
       room.outgoing.push_back(std::move(snap));
     }
   }
+}
+
+void RoomManager::tick(double dt) {
+  updateClientMovements(dt);
+  removeInactiveClients();
+  sendSnapshots(dt);
 }
 
 } // namespace Network

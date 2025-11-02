@@ -9,7 +9,7 @@ on:
 jobs:
   validate:
     if: github.head_ref == 'develop'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
       - name: Checkout code

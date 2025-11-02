@@ -7,11 +7,10 @@
 
 #pragma once
 
+#include "MessageHeader.hpp"
 #include <cstring>
 #include <stdexcept>
 #include <vector>
-
-#include "MessageHeader.hpp"
 
 namespace Network {
 

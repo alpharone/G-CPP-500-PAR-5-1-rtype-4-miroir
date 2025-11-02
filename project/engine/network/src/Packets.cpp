@@ -6,7 +6,6 @@
 */
 
 #include "Packets.hpp"
-
 #include "Utils.hpp"
 
 std::vector<uint8_t> Network::Packet::serialize() const {

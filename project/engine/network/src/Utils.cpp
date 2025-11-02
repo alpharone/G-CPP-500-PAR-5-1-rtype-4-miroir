@@ -6,7 +6,6 @@
 */
 
 #include "Utils.hpp"
-
 #include <stdexcept>
 
 void Network::write_u8(std::vector<uint8_t> &out, uint8_t v) {

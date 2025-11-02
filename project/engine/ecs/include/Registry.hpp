@@ -7,15 +7,14 @@
 
 #pragma once
 
+#include "Entity.hpp"
+#include "SparseArray.hpp"
 #include <any>
 #include <functional>
 #include <stdexcept>
 #include <typeindex>
 #include <unordered_map>
 #include <vector>
-
-#include "Entity.hpp"
-#include "SparseArray.hpp"
 
 namespace Ecs {
 

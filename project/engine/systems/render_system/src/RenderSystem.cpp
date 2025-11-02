@@ -6,7 +6,6 @@
 */
 
 #include "RenderSystem.hpp"
-
 #include <filesystem>
 
 System::RenderSystem::RenderSystem(
@@ -32,6 +31,11 @@ void System::RenderSystem::init(Ecs::Registry &) {
 void System::RenderSystem::update(Ecs::Registry &registry, double) {
   if (!_initialized)
     return;
+  if (WindowShouldClose()) {
+    if (_ctx)
+      _ctx->quitRequested = true;
+    return;
+  }
   BeginDrawing();
   ClearBackground(BLACK);
 
@@ -80,24 +84,16 @@ void System::RenderSystem::shutdown() {
 
 extern "C" std::shared_ptr<System::ISystem>
 createRenderSystem(std::any params) {
-  int w = 800;
-  int h = 600;
-  std::string title = "R-Type Client";
-  std::shared_ptr<Network::network_context_t> ctx;
-
   try {
-    if (params.has_value()) {
-      auto t = std::any_cast<std::tuple<
-          int, int, std::string, std::shared_ptr<Network::network_context_t>>>(
-          params);
-      w = std::get<0>(t);
-      h = std::get<1>(t);
-      title = std::get<2>(t);
-      ctx = std::get<3>(t);
-    }
-    return std::make_shared<System::RenderSystem>(w, h, title, ctx);
+    auto vec = std::any_cast<std::vector<std::any>>(params);
+    int width = std::any_cast<int>(vec[0]);
+    int height = std::any_cast<int>(vec[1]);
+    std::string title = std::any_cast<std::string>(vec[2]);
+    auto ctx =
+        std::any_cast<std::shared_ptr<Network::network_context_t>>(vec[3]);
+    return std::make_shared<System::RenderSystem>(width, height, title, ctx);
   } catch (const std::exception &e) {
-    Logger::error(std::string("[Factory]: Failed to create FactorySystem: ") +
+    Logger::error(std::string("[Factory]: Failed to create RenderSystem: ") +
                   e.what());
   }
   return nullptr;

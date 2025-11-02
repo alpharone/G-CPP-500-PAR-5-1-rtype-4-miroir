@@ -6,7 +6,6 @@
 */
 
 #include "AsioNetworkTransport.hpp"
-
 #include "Logger.hpp"
 
 using asio::ip::udp;

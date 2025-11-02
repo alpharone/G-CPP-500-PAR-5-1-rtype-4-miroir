@@ -5,10 +5,9 @@
 ** RegistryTest
 */
 
-#include <catch2/catch_test_macros.hpp>
-
 #include "Registry.hpp"
 #include "SparseArray.hpp"
+#include <catch2/catch_test_macros.hpp>
 
 struct Position {
   int x;

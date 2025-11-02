@@ -6,7 +6,6 @@
 */
 
 #include "SystemManager.hpp"
-
 #include "Logger.hpp"
 
 void System::SystemManager::registerSystem(std::shared_ptr<ISystem> system) {

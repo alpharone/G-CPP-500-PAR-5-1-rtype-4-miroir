@@ -7,10 +7,9 @@
 
 #pragma once
 
+#include "Packets.hpp"
 #include <optional>
 #include <vector>
-
-#include "Packets.hpp"
 
 namespace Network {
 

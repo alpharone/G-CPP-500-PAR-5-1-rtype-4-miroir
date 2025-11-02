@@ -5,9 +5,8 @@
 ** EntityTest
 */
 
-#include <catch2/catch_test_macros.hpp>
-
 #include "Entity.hpp"
+#include <catch2/catch_test_macros.hpp>
 
 TEST_CASE("Ecs::Entity construction and conversion", "[Entity]") {
   SECTION("Construct with small id and convert to size_t") {

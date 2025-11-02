@@ -17,6 +17,7 @@ target_link_libraries(AISystem
         ecs
         components
         tools
+        nlohmann_json::nlohmann_json
 )
 
 if(BUILD_TESTS)

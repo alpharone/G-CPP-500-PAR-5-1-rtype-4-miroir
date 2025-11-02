@@ -7,14 +7,13 @@
 
 #pragma once
 
+#include "INetworkTransport.hpp"
 #include <asio.hpp>
 #include <atomic>
 #include <deque>
 #include <memory>
 #include <mutex>
 #include <thread>
-
-#include "INetworkTransport.hpp"
 
 using asio::ip::udp;
 

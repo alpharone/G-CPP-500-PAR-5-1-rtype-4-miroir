@@ -6,12 +6,11 @@
 */
 
 #include "ReliableLayerAdapter.hpp"
-
-#include <optional>
-
 #include "Logger.hpp"
 #include "MessageType.hpp"
 #include "Utils.hpp"
+
+#include <optional>
 
 namespace Network {
 

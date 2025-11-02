@@ -7,23 +7,24 @@
 
 #pragma once
 
-#include <memory>
-#include <mutex>
-#include <string>
-#include <unordered_map>
-
+#include "ClientConfig.hpp"
 #include "ISystem.hpp"
 #include "Logger.hpp"
 #include "NetworkContext.hpp"
 #include "ReliableLayerAdapter.hpp"
 #include "SnapshotInterpolator.hpp"
+#include <any>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace System {
 
 class ClientNetworkSystem : public ISystem {
 public:
-  ClientNetworkSystem(const std::string &host, unsigned short port,
-                      std::shared_ptr<Network::network_context_t> ctx);
+  ClientNetworkSystem(const client_network_config_t &config);
   ~ClientNetworkSystem() override = default;
 
   void init(Ecs::Registry &registry) override;
@@ -31,6 +32,10 @@ public:
   void shutdown() override;
 
 private:
+  void setupNetworkComponents();
+  void setupPacketHandlers();
+  void sendNewClientPacket();
+
   void onAppPacket(const Network::Packet &pkt, const Network::endpoint_t &from);
   void handleAcceptClient(const Network::Packet &pkt,
                           const Network::endpoint_t &from);
@@ -42,6 +47,17 @@ private:
                        const Network::endpoint_t &from);
   void handleServerSnapshot(const Network::Packet &pkt,
                             const Network::endpoint_t &);
+
+  uint32_t parseEntitySpawnData(const Network::Packet &pkt, size_t &offset,
+                                std::string &sprite, float &x, float &y,
+                                int &frame_x, int &frame_y, int &frame_w,
+                                int &frame_h, int &frame_count,
+                                float &frame_time);
+  void createEntityWithComponents(Ecs::Registry &registry, size_t entityId,
+                                  const std::string &sprite, float x, float y,
+                                  int frame_x, int frame_y, int frame_w,
+                                  int frame_h, int frame_count,
+                                  float frame_time);
 
   using HandlerFn =
       std::function<void(const Network::Packet &, const Network::endpoint_t &)>;
@@ -63,6 +79,14 @@ private:
 
   std::atomic<bool> _initialized{false};
   std::mutex _mutex;
+  std::string _player_sprite;
+  int _player_frame_w;
+  int _player_frame_h;
+  int _player_frame_count;
+  float _player_frame_time;
+  int _player_frame_x;
+  int _player_frame_y;
+  bool _timeSynced{false};
 };
 
 } // namespace System

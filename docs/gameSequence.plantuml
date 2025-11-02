@@ -19,7 +19,7 @@ Server -> Client : ENTITY_SPAWN(other players)
 note right : Game starts immediately after spawn
 
 == Game loop ==
-loop chaque tick (~120Hz côté serveur)
+loop chaque tick (~60Hz côté serveur)
   C -> Client : input (move/shoot)
   Client -> Server : CLIENT_INPUT(bitmask switch)
   Server -> RoomMgr : notify packet
